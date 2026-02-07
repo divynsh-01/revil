@@ -14,6 +14,7 @@ const ShopContextProvider = (props) => {
     const [showSearch, setShowSearch] = useState(false);
     const [cartItems, setCartItems] = useState({});
     const [products, setProducts] = useState([]);
+    const [wishlist, setWishlist] = useState([]);
     const [token, setToken] = useState('')
     const navigate = useNavigate();
 
@@ -25,7 +26,7 @@ const ShopContextProvider = (props) => {
             return;
         }
 
-        let cartData = structuredClone(cartItems);
+        let cartData = structuredClone(cartItems) || {};
 
         if (cartData[itemId]) {
             if (cartData[itemId][size]) {
@@ -72,8 +73,11 @@ const ShopContextProvider = (props) => {
 
     const updateQuantity = async (itemId, size, quantity) => {
 
-        let cartData = structuredClone(cartItems);
+        let cartData = structuredClone(cartItems) || {};
 
+        if (!cartData[itemId]) {
+            cartData[itemId] = {};
+        }
         cartData[itemId][size] = quantity;
 
         setCartItems(cartData)
@@ -98,7 +102,8 @@ const ShopContextProvider = (props) => {
             for (const item in cartItems[items]) {
                 try {
                     if (cartItems[items][item] > 0) {
-                        totalAmount += itemInfo.price * cartItems[items][item];
+                        const price = itemInfo?.discountPrice || itemInfo?.price || 0;
+                        totalAmount += price * cartItems[items][item];
                     }
                 } catch (error) {
 
@@ -124,10 +129,60 @@ const ShopContextProvider = (props) => {
         }
     }
 
-    const getUserCart = async ( token ) => {
+    const getUserWishlist = async (token) => {
         try {
-            
-            const response = await axios.post(backendUrl + '/api/cart/get',{},{headers:{token}})
+            const response = await axios.post(backendUrl + '/api/wishlist/get', {}, { headers: { token } })
+            if (response.data.success) {
+                const productIds = response.data.products.map(p => p._id);
+                setWishlist(productIds);
+            }
+        } catch (error) {
+            console.log(error)
+        }
+    }
+
+    const addToWishlist = async (productId) => {
+        if (!token) {
+            toast.error('Please login to add to wishlist');
+            navigate('/login');
+            return;
+        }
+
+        try {
+            const response = await axios.post(backendUrl + '/api/wishlist/add', { productId }, { headers: { token } })
+            if (response.data.success) {
+                setWishlist(prev => [...prev, productId]);
+                toast.success('Added to wishlist');
+            } else {
+                toast.error(response.data.message);
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error(error.message)
+        }
+    }
+
+    const removeFromWishlist = async (productId) => {
+        try {
+            const response = await axios.post(backendUrl + '/api/wishlist/remove', { productId }, { headers: { token } })
+            if (response.data.success) {
+                setWishlist(prev => prev.filter(id => id !== productId));
+                toast.success('Removed from wishlist');
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error(error.message)
+        }
+    }
+
+    const getWishlistCount = () => {
+        return wishlist.length;
+    }
+
+    const getUserCart = async (token) => {
+        try {
+
+            const response = await axios.post(backendUrl + '/api/cart/get', {}, { headers: { token } })
             if (response.data.success) {
                 setCartItems(response.data.cartData)
             }
@@ -145,19 +200,22 @@ const ShopContextProvider = (props) => {
         if (!token && localStorage.getItem('token')) {
             setToken(localStorage.getItem('token'))
             getUserCart(localStorage.getItem('token'))
+            getUserWishlist(localStorage.getItem('token'))
         }
         if (token) {
             getUserCart(token)
+            getUserWishlist(token)
         }
     }, [token])
 
     const value = {
         products, currency, delivery_fee,
         search, setSearch, showSearch, setShowSearch,
-        cartItems, addToCart,setCartItems,
+        cartItems, addToCart, setCartItems,
         getCartCount, updateQuantity,
         getCartAmount, navigate, backendUrl,
-        setToken, token
+        setToken, token,
+        wishlist, addToWishlist, removeFromWishlist, getWishlistCount
     }
 
     return (

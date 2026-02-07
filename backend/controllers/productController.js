@@ -5,7 +5,21 @@ import productModel from "../models/productModel.js"
 const addProduct = async (req, res) => {
     try {
 
-        const { name, description, price, category, subCategory, sizes, bestseller } = req.body
+        const {
+            title,
+            description,
+            price,
+            discountPrice,
+            category,
+            subCategory,
+            brand,
+            sizes,
+            colors,
+            stockByVariant,
+            bestseller,
+            isActive,
+            isFeatured
+        } = req.body
 
         const image1 = req.files.image1 && req.files.image1[0]
         const image2 = req.files.image2 && req.files.image2[0]
@@ -15,22 +29,38 @@ const addProduct = async (req, res) => {
         const images = [image1, image2, image3, image4].filter((item) => item !== undefined)
 
         let imagesUrl = await Promise.all(
-            images.map(async (item) => {
+            images.map(async (item, index) => {
                 let result = await cloudinary.uploader.upload(item.path, { resource_type: 'image' });
-                return result.secure_url
+                return {
+                    url: result.secure_url,
+                    order: index + 1
+                }
             })
         )
 
+        // Generate slug from title
+        const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
         const productData = {
-            name,
+            title,
+            name: title, // Backward compatibility
+            slug,
             description,
             category,
             price: Number(price),
+            discountPrice: discountPrice ? Number(discountPrice) : null,
+            currency: "INR",
             subCategory,
+            brand: brand || "",
             bestseller: bestseller === "true" ? true : false,
+            isActive: isActive === "false" ? false : true,
+            isFeatured: isFeatured === "true" ? true : false,
             sizes: JSON.parse(sizes),
-            image: imagesUrl,
-            date: Date.now()
+            colors: colors ? JSON.parse(colors) : [],
+            stockByVariant: stockByVariant ? JSON.parse(stockByVariant) : {},
+            images: imagesUrl,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
         }
 
         console.log(productData);
@@ -49,9 +79,9 @@ const addProduct = async (req, res) => {
 // function for list product
 const listProducts = async (req, res) => {
     try {
-        
+
         const products = await productModel.find({});
-        res.json({success:true,products})
+        res.json({ success: true, products })
 
     } catch (error) {
         console.log(error)
@@ -62,9 +92,9 @@ const listProducts = async (req, res) => {
 // function for removing product
 const removeProduct = async (req, res) => {
     try {
-        
+
         await productModel.findByIdAndDelete(req.body.id)
-        res.json({success:true,message:"Product Removed"})
+        res.json({ success: true, message: "Product Removed" })
 
     } catch (error) {
         console.log(error)
@@ -75,10 +105,10 @@ const removeProduct = async (req, res) => {
 // function for single product info
 const singleProduct = async (req, res) => {
     try {
-        
+
         const { productId } = req.body
         const product = await productModel.findById(productId)
-        res.json({success:true,product})
+        res.json({ success: true, product })
 
     } catch (error) {
         console.log(error)

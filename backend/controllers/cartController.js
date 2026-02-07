@@ -1,75 +1,154 @@
-import userModel from "../models/userModel.js"
+import cartModel from "../models/cartModel.js";
+import productModel from "../models/productModel.js";
 
-
-// add products to user cart
-const addToCart = async (req,res) => {
+// Get user cart
+const getCart = async (req, res) => {
     try {
-        
-        const { userId, itemId, size } = req.body
+        const { userId } = req.body;
 
-        const userData = await userModel.findById(userId)
-        let cartData = await userData.cartData;
+        let cart = await cartModel.findOne({ userId });
 
-        if (cartData[itemId]) {
-            if (cartData[itemId][size]) {
-                cartData[itemId][size] += 1
-            }
-            else {
-                cartData[itemId][size] = 1
-            }
-        } else {
-            cartData[itemId] = {}
-            cartData[itemId][size] = 1
+        if (!cart) {
+            cart = new cartModel({ userId, items: [] });
+            await cart.save();
         }
 
-        await userModel.findByIdAndUpdate(userId, {cartData})
-
-        res.json({ success: true, message: "Added To Cart" })
+        res.json({ success: true, cart });
 
     } catch (error) {
-        console.log(error)
-        res.json({ success: false, message: error.message })
+        console.log(error);
+        res.json({ success: false, message: error.message });
     }
-}
+};
 
-// update user cart
-const updateCart = async (req,res) => {
+// Update cart (add/update/remove items)
+const updateCart = async (req, res) => {
     try {
-        
-        const { userId ,itemId, size, quantity } = req.body
+        const { userId, items } = req.body;
 
-        const userData = await userModel.findById(userId)
-        let cartData = await userData.cartData;
+        // Validate and enrich items with product data
+        const enrichedItems = [];
+        for (const item of items) {
+            const product = await productModel.findById(item.productId);
+            if (product) {
+                enrichedItems.push({
+                    productId: item.productId,
+                    title: product.title || product.name,
+                    price: product.discountPrice || product.price,
+                    image: product.images?.[0]?.url || product.images?.[0] || product.image?.[0] || "",
+                    size: item.size,
+                    quantity: item.quantity
+                });
+            }
+        }
 
-        cartData[itemId][size] = quantity
+        let cart = await cartModel.findOne({ userId });
 
-        await userModel.findByIdAndUpdate(userId, {cartData})
-        res.json({ success: true, message: "Cart Updated" })
+        if (!cart) {
+            cart = new cartModel({ userId, items: enrichedItems });
+        } else {
+            cart.items = enrichedItems;
+        }
+
+        await cart.save();
+
+        res.json({ success: true, message: "Cart updated", cart });
 
     } catch (error) {
-        console.log(error)
-        res.json({ success: false, message: error.message })
+        console.log(error);
+        res.json({ success: false, message: error.message });
     }
-}
+};
 
-
-// get user cart data
-const getUserCart = async (req,res) => {
-
+// Add single item to cart
+const addToCart = async (req, res) => {
     try {
-        
-        const { userId } = req.body
-        
-        const userData = await userModel.findById(userId)
-        let cartData = await userData.cartData;
+        const { userId, productId, size, quantity } = req.body;
 
-        res.json({ success: true, cartData })
+        const product = await productModel.findById(productId);
+        if (!product) {
+            return res.json({ success: false, message: "Product not found" });
+        }
+
+        let cart = await cartModel.findOne({ userId });
+
+        if (!cart) {
+            cart = new cartModel({ userId, items: [] });
+        }
+
+        // Check if item already exists
+        const existingItemIndex = cart.items.findIndex(
+            item => item.productId.toString() === productId && item.size === size
+        );
+
+        const cartItem = {
+            productId,
+            title: product.title || product.name,
+            price: product.discountPrice || product.price,
+            image: product.images?.[0]?.url || product.images?.[0] || product.image?.[0] || "",
+            size,
+            quantity: quantity || 1
+        };
+
+        if (existingItemIndex > -1) {
+            cart.items[existingItemIndex].quantity += (quantity || 1);
+        } else {
+            cart.items.push(cartItem);
+        }
+
+        await cart.save();
+
+        res.json({ success: true, message: "Item added to cart", cart });
 
     } catch (error) {
-        console.log(error)
-        res.json({ success: false, message: error.message })
+        console.log(error);
+        res.json({ success: false, message: error.message });
     }
+};
 
-}
+// Remove item from cart
+const removeFromCart = async (req, res) => {
+    try {
+        const { userId, productId, size } = req.body;
 
-export { addToCart, updateCart, getUserCart }
+        const cart = await cartModel.findOne({ userId });
+
+        if (!cart) {
+            return res.json({ success: false, message: "Cart not found" });
+        }
+
+        cart.items = cart.items.filter(
+            item => !(item.productId.toString() === productId && item.size === size)
+        );
+
+        await cart.save();
+
+        res.json({ success: true, message: "Item removed from cart", cart });
+
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+// Clear cart
+const clearCart = async (req, res) => {
+    try {
+        const { userId } = req.body;
+
+        await cartModel.findOneAndUpdate({ userId }, { items: [] });
+
+        res.json({ success: true, message: "Cart cleared" });
+
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
+// Get user cart (legacy support)
+const getUserCart = async (req, res) => {
+    return getCart(req, res);
+};
+
+export { getCart, updateCart, addToCart, removeFromCart, clearCart, getUserCart };
