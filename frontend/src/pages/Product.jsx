@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { ShopContext } from '../context/ShopContext';
 import { assets } from '../assets/assets';
 import RelatedProducts from '../components/RelatedProducts';
+import Loader from '../components/Loader';
 
 const Product = () => {
 
@@ -190,7 +191,7 @@ const Product = () => {
       <RelatedProducts category={productData.category} subCategory={productData.subCategory} />
 
     </div>
-  ) : <div className=' opacity-0'></div>
+  ) : <Loader />
 }
 
 export default Product

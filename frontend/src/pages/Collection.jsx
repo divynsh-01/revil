@@ -3,10 +3,11 @@ import { ShopContext } from '../context/ShopContext'
 import { assets } from '../assets/assets';
 import Title from '../components/Title';
 import ProductItem from '../components/ProductItem';
+import Loader from '../components/Loader';
 
 const Collection = () => {
 
-  const { products, search, showSearch } = useContext(ShopContext);
+  const { products, search, showSearch, loading } = useContext(ShopContext);
   const [showFilter, setShowFilter] = useState(false);
   const [filterProducts, setFilterProducts] = useState([]);
 
@@ -421,18 +422,22 @@ const Collection = () => {
         )}
 
         {/* Map Products */}
-        <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 gap-y-6'>
-          {filterProducts.length > 0 ? (
-            filterProducts.map((item, index) => (
-              <ProductItem key={index} name={item.title || item.name} id={item._id} price={item.discountPrice || item.price} image={item.images || item.image} />
-            ))
-          ) : (
-            <div className='col-span-full text-center py-20'>
-              <p className='text-2xl text-gray-400'>No products found</p>
-              <p className='text-gray-500 mt-2'>Try adjusting your filters</p>
-            </div>
-          )}
-        </div>
+        {loading ? (
+          <Loader />
+        ) : (
+          <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 gap-y-6'>
+            {filterProducts.length > 0 ? (
+              filterProducts.map((item, index) => (
+                <ProductItem key={index} name={item.title || item.name} id={item._id} price={item.discountPrice || item.price} image={item.images || item.image} />
+              ))
+            ) : (
+              <div className='col-span-full text-center py-20'>
+                <p className='text-2xl text-gray-400'>No products found</p>
+                <p className='text-gray-500 mt-2'>Try adjusting your filters</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
     </div>
