@@ -86,14 +86,31 @@ const registerUser = async (req, res) => {
 // Route for admin login
 const adminLogin = async (req, res) => {
     try {
-
         const { email, password } = req.body
 
-        if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
-            const token = jwt.sign(email + password, process.env.JWT_SECRET);
-            res.json({ success: true, token })
+        // Find user in database
+        const user = await userModel.findOne({ email });
+
+        if (!user) {
+            return res.json({ success: false, message: "User doesn't exist" })
+        }
+
+        // Check if user has admin or owner role
+        if (user.role !== 'admin' && user.role !== 'owner') {
+            return res.json({ success: false, message: "Access Denied - Not an admin" })
+        }
+
+        // Verify password
+        const isMatch = await bcrypt.compare(password, user.password);
+
+        if (isMatch) {
+            // Update last login time
+            await userModel.findByIdAndUpdate(user._id, { lastLoginAt: Date.now() });
+
+            const token = createToken(user._id)
+            res.json({ success: true, token, role: user.role })
         } else {
-            res.json({ success: false, message: "Invalid credentials" })
+            res.json({ success: false, message: 'Invalid credentials' })
         }
 
     } catch (error) {
@@ -200,4 +217,161 @@ const changePassword = async (req, res) => {
     }
 }
 
-export { loginUser, registerUser, adminLogin, getUserProfile, updateUserProfile, changePassword }
+// Route to promote user to admin (Owner only)
+const promoteToAdmin = async (req, res) => {
+    try {
+        const { userId } = req.body;
+
+        const user = await userModel.findById(userId);
+
+        if (!user) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        if (user.role === 'owner') {
+            return res.json({ success: false, message: 'Cannot modify owner role' });
+        }
+
+        if (user.role === 'admin') {
+            return res.json({ success: false, message: 'User is already an admin' });
+        }
+
+        await userModel.findByIdAndUpdate(userId, { role: 'admin' });
+
+        res.json({ success: true, message: `${user.name} has been promoted to admin` });
+
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// Route to demote admin to user (Owner only)
+const demoteFromAdmin = async (req, res) => {
+    try {
+        const { userId } = req.body;
+
+        const user = await userModel.findById(userId);
+
+        if (!user) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        if (user.role === 'owner') {
+            return res.json({ success: false, message: 'Cannot modify owner role' });
+        }
+
+        if (user.role === 'user') {
+            return res.json({ success: false, message: 'User is not an admin' });
+        }
+
+        await userModel.findByIdAndUpdate(userId, { role: 'user' });
+
+        res.json({ success: true, message: `${user.name} has been demoted to user` });
+
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// Route to list all users (Admin/Owner)
+const listUsers = async (req, res) => {
+    try {
+        const users = await userModel.find({}).select('-password').sort({ createdAt: -1 });
+
+        res.json({ success: true, users });
+
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// Route to get current user's role
+const getUserRole = async (req, res) => {
+    try {
+        const { userId } = req.body;
+
+        const user = await userModel.findById(userId).select('role');
+
+        if (!user) {
+            return res.json({ success: false, message: 'User not found' });
+        }
+
+        res.json({ success: true, role: user.role });
+
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// Route to create first owner account (Public - one-time use)
+const createOwner = async (req, res) => {
+    try {
+        // Check if owner already exists
+        const existingOwner = await userModel.findOne({ role: 'owner' });
+        if (existingOwner) {
+            return res.json({
+                success: false,
+                message: 'Owner account already exists. Only one owner allowed per system.'
+            });
+        }
+
+        const { name, email, password, phone } = req.body;
+
+        // Validate inputs
+        if (!name || !email || !password) {
+            return res.json({ success: false, message: 'Name, email, and password are required' });
+        }
+
+        if (!validator.isEmail(email)) {
+            return res.json({ success: false, message: 'Please enter a valid email' });
+        }
+
+        if (password.length < 8) {
+            return res.json({ success: false, message: 'Password must be at least 8 characters' });
+        }
+
+        // Check if email already exists
+        const existingUser = await userModel.findOne({ email });
+        if (existingUser) {
+            return res.json({ success: false, message: 'A user with this email already exists' });
+        }
+
+        // Hash password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Create owner
+        const owner = new userModel({
+            name,
+            email,
+            password: hashedPassword,
+            phone: phone || '',
+            role: 'owner'
+        });
+
+        await owner.save();
+
+        const token = createToken(owner._id);
+
+        res.json({
+            success: true,
+            message: 'Owner account created successfully',
+            token,
+            owner: {
+                name: owner.name,
+                email: owner.email,
+                role: owner.role
+            }
+        });
+
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+export { loginUser, registerUser, adminLogin, getUserProfile, updateUserProfile, changePassword, promoteToAdmin, demoteFromAdmin, listUsers, getUserRole, createOwner }

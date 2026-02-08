@@ -76,6 +76,88 @@ const addProduct = async (req, res) => {
     }
 }
 
+// function for updating product
+const updateProduct = async (req, res) => {
+    try {
+        const {
+            productId,
+            title,
+            description,
+            price,
+            discountPrice,
+            category,
+            subCategory,
+            brand,
+            sizes,
+            colors,
+            stockByVariant,
+            bestseller,
+            isActive,
+            isFeatured
+        } = req.body
+
+        // Fetch existing product to handle images if not updated
+        const existingProduct = await productModel.findById(productId);
+        if (!existingProduct) {
+            return res.json({ success: false, message: "Product not found" });
+        }
+
+        // Handle image updates (only if new images are uploaded)
+        const image1 = req.files.image1 && req.files.image1[0]
+        const image2 = req.files.image2 && req.files.image2[0]
+        const image3 = req.files.image3 && req.files.image3[0]
+        const image4 = req.files.image4 && req.files.image4[0]
+
+        let imagesUrl = existingProduct.images;
+
+        if (image1 || image2 || image3 || image4) {
+            const images = [image1, image2, image3, image4].filter((item) => item !== undefined)
+
+            // If new images provided, upload them
+            // Note: Currently replacing all images if any new one is uploaded for simplicity
+            // A granular update would require more complex logic
+            if (images.length > 0) {
+                imagesUrl = await Promise.all(
+                    images.map(async (item, index) => {
+                        let result = await cloudinary.uploader.upload(item.path, { resource_type: 'image' });
+                        return {
+                            url: result.secure_url,
+                            order: index + 1
+                        }
+                    })
+                )
+            }
+        }
+
+        const updateData = {
+            title,
+            name: title,
+            description,
+            category,
+            price: Number(price),
+            discountPrice: discountPrice ? Number(discountPrice) : null,
+            subCategory,
+            brand: brand || "",
+            bestseller: bestseller === "true",
+            isActive: isActive === "true", // Note: Ensure frontend sends "true"/"false" similarly to add
+            isFeatured: isFeatured === "true",
+            sizes: JSON.parse(sizes),
+            colors: colors ? JSON.parse(colors) : [],
+            stockByVariant: stockByVariant ? JSON.parse(stockByVariant) : {},
+            images: imagesUrl,
+            updatedAt: Date.now()
+        }
+
+        await productModel.findByIdAndUpdate(productId, updateData);
+
+        res.json({ success: true, message: "Product Updated" })
+
+    } catch (error) {
+        console.log(error)
+        res.json({ success: false, message: error.message })
+    }
+}
+
 // function for list product
 const listProducts = async (req, res) => {
     try {
@@ -116,4 +198,4 @@ const singleProduct = async (req, res) => {
     }
 }
 
-export { listProducts, addProduct, removeProduct, singleProduct }
+export { listProducts, addProduct, removeProduct, singleProduct, updateProduct }

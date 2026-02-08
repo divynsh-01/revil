@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken'
 import userModel from '../models/userModel.js'
 
-const adminAuth = async (req, res, next) => {
+const ownerAuth = async (req, res, next) => {
     try {
         const { token } = req.headers
         if (!token) {
@@ -17,9 +17,9 @@ const adminAuth = async (req, res, next) => {
             return res.json({ success: false, message: "User not found" })
         }
 
-        // Check if user is admin or owner
-        if (user.role !== 'admin' && user.role !== 'owner') {
-            return res.json({ success: false, message: "Access Denied - Admin privileges required" })
+        // Check if user is owner
+        if (user.role !== 'owner') {
+            return res.json({ success: false, message: "Access Denied - Owner privileges required" })
         }
 
         // Attach user to request
@@ -31,4 +31,4 @@ const adminAuth = async (req, res, next) => {
     }
 }
 
-export default adminAuth
+export default ownerAuth

@@ -13,7 +13,17 @@ const getCart = async (req, res) => {
             await cart.save();
         }
 
-        res.json({ success: true, cart });
+        // Convert cart items array to frontend format (nested object)
+        const cartData = {};
+        cart.items.forEach(item => {
+            const productId = item.productId.toString();
+            if (!cartData[productId]) {
+                cartData[productId] = {};
+            }
+            cartData[productId][item.size] = item.quantity;
+        });
+
+        res.json({ success: true, cartData });
 
     } catch (error) {
         console.log(error);
@@ -24,48 +34,10 @@ const getCart = async (req, res) => {
 // Update cart (add/update/remove items)
 const updateCart = async (req, res) => {
     try {
-        const { userId, items } = req.body;
+        const { userId, itemId, size, quantity } = req.body;
 
-        // Validate and enrich items with product data
-        const enrichedItems = [];
-        for (const item of items) {
-            const product = await productModel.findById(item.productId);
-            if (product) {
-                enrichedItems.push({
-                    productId: item.productId,
-                    title: product.title || product.name,
-                    price: product.discountPrice || product.price,
-                    image: product.images?.[0]?.url || product.images?.[0] || product.image?.[0] || "",
-                    size: item.size,
-                    quantity: item.quantity
-                });
-            }
-        }
-
-        let cart = await cartModel.findOne({ userId });
-
-        if (!cart) {
-            cart = new cartModel({ userId, items: enrichedItems });
-        } else {
-            cart.items = enrichedItems;
-        }
-
-        await cart.save();
-
-        res.json({ success: true, message: "Cart updated", cart });
-
-    } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
-    }
-};
-
-// Add single item to cart
-const addToCart = async (req, res) => {
-    try {
-        const { userId, productId, size, quantity } = req.body;
-
-        const product = await productModel.findById(productId);
+        // Get product details
+        const product = await productModel.findById(itemId);
         if (!product) {
             return res.json({ success: false, message: "Product not found" });
         }
@@ -76,35 +48,105 @@ const addToCart = async (req, res) => {
             cart = new cartModel({ userId, items: [] });
         }
 
-        // Check if item already exists
+        // Find existing item
         const existingItemIndex = cart.items.findIndex(
-            item => item.productId.toString() === productId && item.size === size
+            item => item.productId.toString() === itemId && item.size === size
         );
 
-        const cartItem = {
-            productId,
-            title: product.title || product.name,
-            price: product.discountPrice || product.price,
-            image: product.images?.[0]?.url || product.images?.[0] || product.image?.[0] || "",
-            size,
-            quantity: quantity || 1
-        };
+        if (quantity > 0) {
+            // Update or add item
+            const cartItem = {
+                productId: itemId,
+                title: product.title || product.name,
+                price: product.discountPrice || product.price,
+                image: product.images?.[0]?.url || product.images?.[0] || product.image?.[0] || "",
+                size,
+                quantity
+            };
 
-        if (existingItemIndex > -1) {
-            cart.items[existingItemIndex].quantity += (quantity || 1);
+            if (existingItemIndex > -1) {
+                cart.items[existingItemIndex] = cartItem;
+            } else {
+                cart.items.push(cartItem);
+            }
         } else {
-            cart.items.push(cartItem);
+            // Remove item if quantity is 0
+            if (existingItemIndex > -1) {
+                cart.items.splice(existingItemIndex, 1);
+            }
         }
 
         await cart.save();
 
-        res.json({ success: true, message: "Item added to cart", cart });
+        res.json({ success: true, message: "Cart updated" });
 
     } catch (error) {
         console.log(error);
         res.json({ success: false, message: error.message });
     }
 };
+
+// Add single item to cart
+const addToCart = async (req, res) => {
+    try {
+        console.log("Add to cart request body:", req.body);
+        const { userId, itemId, size, quantity } = req.body;
+
+        const productId = itemId;
+        const productData = await productModel.findById(productId);
+
+        if (!productData) {
+            console.log("Product not found:", productId);
+            return res.json({ success: false, message: "Product not found" });
+        }
+
+        let cart = await cartModel.findOne({ userId });
+
+        if (!cart) {
+            console.log("Creating new cart for user:", userId);
+            cart = new cartModel({ userId, items: [] });
+        }
+
+        // Check if item already exists
+        const existingItemIndex = cart.items.findIndex(
+            item => item.productId.toString() === productId && item.size === size
+        );
+
+        if (existingItemIndex > -1) {
+            console.log("Updating existing item quantity");
+            cart.items[existingItemIndex].quantity += (quantity || 1);
+        } else {
+            console.log("Adding new item to cart");
+
+            // Handle image field safely
+            let image = "";
+            if (productData.images && productData.images.length > 0) {
+                image = productData.images[0].url || productData.images[0];
+            } else if (productData.image && productData.image.length > 0) {
+                image = productData.image[0];
+            }
+
+            cart.items.push({
+                productId,
+                title: productData.title || productData.name || "Unknown Product",
+                price: productData.discountPrice || productData.price || 0,
+                image: image,
+                size,
+                quantity: quantity || 1
+            });
+        }
+
+        await cart.save();
+        console.log("Cart saved successfully");
+
+        res.json({ success: true, message: "Item added to cart" });
+
+    } catch (error) {
+        console.log("Error in addToCart:", error);
+        res.json({ success: false, message: error.message });
+    }
+};
+
 
 // Remove item from cart
 const removeFromCart = async (req, res) => {
