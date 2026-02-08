@@ -51,7 +51,7 @@ const List = ({ token }) => {
       <p className='mb-2'>All Products List</p>
       <div className='flex flex-col gap-2'>
 
-        {/* ------- List Table Title ---------- */}
+        {/* ------- List Table ---------- */}
 
         <div className='hidden md:grid grid-cols-[1fr_3fr_1fr_1fr_1fr] items-center py-1 px-2 border bg-gray-100 text-sm'>
           <b>Image</b>
@@ -70,7 +70,10 @@ const List = ({ token }) => {
               <p>{item.title || item.name}</p>
               <p>{item.category}</p>
               <p>{currency}{item.discountPrice || item.price}</p>
-              <p onClick={() => removeProduct(item._id)} className='text-right md:text-center cursor-pointer text-lg'>X</p>
+              <div className='text-right md:text-center flex justify-end md:justify-center gap-2 col-start-3 md:col-auto'>
+                <p onClick={() => window.location.href = `/edit/${item._id}`} className='cursor-pointer text-blue-500 hover:text-blue-700'>Edit</p>
+                <p onClick={() => removeProduct(item._id)} className='cursor-pointer text-red-500 hover:text-red-700'>Delete</p>
+              </div>
             </div>
           ))
         }
