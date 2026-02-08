@@ -45,17 +45,17 @@ const Navbar = () => {
 
             {/* Icons Section */}
             <div className='flex items-center gap-5 sm:gap-6'>
-                {/* Search Icon */}
+                {/* Search Icon - Hidden on mobile */}
                 <button
                     onClick={() => { setShowSearch(true); navigate('/collection') }}
-                    className='transition-transform hover:scale-110 active:scale-95'
+                    className='hidden sm:block transition-transform hover:scale-110 active:scale-95'
                     aria-label='Search'
                 >
                     <img src={assets.search_icon} className='w-5 h-5 cursor-pointer' alt="Search" />
                 </button>
 
-                {/* Wishlist Icon */}
-                <Link to='/wishlist' className='relative transition-transform hover:scale-110 active:scale-95'>
+                {/* Wishlist Icon - Hidden on mobile */}
+                <Link to='/wishlist' className='hidden sm:block relative transition-transform hover:scale-110 active:scale-95'>
                     <svg className='w-5 h-5 cursor-pointer transition-colors hover:text-red-500' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                         <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z' />
                     </svg>
@@ -66,8 +66,8 @@ const Navbar = () => {
                     )}
                 </Link>
 
-                {/* Profile Dropdown */}
-                <div className='group relative'>
+                {/* Profile Dropdown - Hidden on mobile */}
+                <div className='hidden sm:block group relative'>
                     <button
                         onClick={() => token ? null : navigate('/login')}
                         className='transition-transform hover:scale-110 active:scale-95'
@@ -173,6 +173,74 @@ const Navbar = () => {
                         >
                             Contact
                         </NavLink>
+
+                        {/* Additional Mobile Navigation Items */}
+                        <button
+                            onClick={() => {
+                                setShowSearch(true);
+                                navigate('/collection');
+                                setVisible(false);
+                            }}
+                            className='py-4 px-6 border-b border-neutral-100 text-sm uppercase tracking-wider font-medium hover:bg-neutral-50 transition-colors text-left'
+                        >
+                            Search
+                        </button>
+                        <NavLink
+                            onClick={() => setVisible(false)}
+                            className='py-4 px-6 border-b border-neutral-100 text-sm uppercase tracking-wider font-medium hover:bg-neutral-50 transition-colors'
+                            to='/wishlist'
+                        >
+                            Wishlist
+                            {getWishlistCount() > 0 && (
+                                <span className='ml-2 inline-flex items-center justify-center w-5 h-5 bg-red-500 text-white rounded-full text-[10px] font-semibold'>
+                                    {getWishlistCount()}
+                                </span>
+                            )}
+                        </NavLink>
+
+                        {/* Profile Section */}
+                        {token ? (
+                            <>
+                                <NavLink
+                                    onClick={() => setVisible(false)}
+                                    className='py-4 px-6 border-b border-neutral-100 text-sm uppercase tracking-wider font-medium hover:bg-neutral-50 transition-colors'
+                                    to='/profile'
+                                >
+                                    My Profile
+                                </NavLink>
+                                <NavLink
+                                    onClick={() => setVisible(false)}
+                                    className='py-4 px-6 border-b border-neutral-100 text-sm uppercase tracking-wider font-medium hover:bg-neutral-50 transition-colors'
+                                    to='/orders'
+                                >
+                                    Orders
+                                </NavLink>
+                                <NavLink
+                                    onClick={() => setVisible(false)}
+                                    className='py-4 px-6 border-b border-neutral-100 text-sm uppercase tracking-wider font-medium hover:bg-neutral-50 transition-colors'
+                                    to='/addresses'
+                                >
+                                    Addresses
+                                </NavLink>
+                                <button
+                                    onClick={() => {
+                                        logout();
+                                        setVisible(false);
+                                    }}
+                                    className='py-4 px-6 border-b border-neutral-100 text-sm uppercase tracking-wider font-medium hover:bg-neutral-50 transition-colors text-left text-red-600'
+                                >
+                                    Logout
+                                </button>
+                            </>
+                        ) : (
+                            <NavLink
+                                onClick={() => setVisible(false)}
+                                className='py-4 px-6 border-b border-neutral-100 text-sm uppercase tracking-wider font-medium hover:bg-neutral-50 transition-colors'
+                                to='/login'
+                            >
+                                Login
+                            </NavLink>
+                        )}
                     </div>
                 </div>
             </div>

@@ -21,7 +21,7 @@ import Verify from './pages/Verify'
 
 const App = () => {
   return (
-    <div className='px-4'>
+    <div className='px-4 overflow-x-hidden'>
       <ToastContainer />
       <Navbar />
       <SearchBar />
