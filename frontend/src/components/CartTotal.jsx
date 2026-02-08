@@ -114,7 +114,7 @@ const CartTotal = () => {
               <p className='text-xs text-green-600'>
                 {appliedCoupon.type === 'percentage'
                   ? `${appliedCoupon.value}% off`
-                  : `$${appliedCoupon.value} off`}
+                  : `₹${appliedCoupon.value} off`}
               </p>
             </div>
             <button

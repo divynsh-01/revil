@@ -7,7 +7,7 @@ import ProductItem from '../components/ProductItem';
 const Collection = () => {
 
   const { products, search, showSearch } = useContext(ShopContext);
-  const [showFilter, setShowFilter] = useState(true);
+  const [showFilter, setShowFilter] = useState(false);
   const [filterProducts, setFilterProducts] = useState([]);
 
   // Filter states
@@ -178,116 +178,197 @@ const Collection = () => {
   return (
     <div className='flex flex-col sm:flex-row gap-1 sm:gap-10 pt-10 border-t'>
 
-      {/* Filter Options */}
-      <div className='w-full sm:min-w-60 sm:max-w-60'>
-        <p onClick={() => setShowFilter(!showFilter)} className='my-2 text-xl flex items-center cursor-pointer gap-2'>
+      {/* Sticky Filter Icon for Mobile */}
+      <button
+        onClick={() => setShowFilter(true)}
+        className='sm:hidden fixed bottom-6 right-6 z-30 bg-black text-white p-4 rounded-full shadow-lg hover:bg-gray-800 transition-all active:scale-95'
+        aria-label='Open Filters'
+      >
+        <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+          <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z' />
+        </svg>
+        {hasActiveFilters() && (
+          <span className='absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-semibold'>
+            {category.length + subCategory.length + sizes.length + colors.length}
+          </span>
+        )}
+      </button>
+
+      {/* Mobile Filter Overlay */}
+      {showFilter && (
+        <div className='sm:hidden fixed inset-0 bg-black bg-opacity-50 z-40' onClick={() => setShowFilter(false)} />
+      )}
+
+      {/* Filter Sidebar */}
+      <div className={`
+        fixed sm:static top-0 left-0 bottom-0 w-80 sm:min-w-60 sm:max-w-60 bg-white z-50 sm:z-auto
+        transform transition-transform duration-300 overflow-y-auto
+        ${showFilter ? 'translate-x-0' : '-translate-x-full sm:translate-x-0'}
+      `}>
+        {/* Mobile Sidebar Header */}
+        <div className='sm:hidden sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between z-10'>
+          <h2 className='text-xl font-medium uppercase tracking-wider'>Filters</h2>
+          <button
+            onClick={() => setShowFilter(false)}
+            className='p-2 hover:bg-gray-100 rounded-full transition-colors'
+          >
+            <svg className='w-6 h-6' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+              <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
+            </svg>
+          </button>
+        </div>
+
+        {/* Desktop Filter Header */}
+        <p className='hidden sm:flex my-2 text-xl items-center gap-2'>
           FILTERS
-          <img className={`h-3 sm:hidden ${showFilter ? 'rotate-90' : ''}`} src={assets.dropdown_icon} alt="" />
         </p>
 
-        {/* Category Filter */}
-        <div className={`border border-gray-300 pl-5 py-3 mt-6 ${showFilter ? '' : 'hidden'} sm:block`}>
-          <p className='mb-3 text-sm font-medium'>CATEGORIES</p>
-          <div className='flex flex-col gap-2 text-sm font-light text-gray-700'>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Men'} onChange={toggleCategory} checked={category.includes('Men')} /> Men
-            </p>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Women'} onChange={toggleCategory} checked={category.includes('Women')} /> Women
-            </p>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Kids'} onChange={toggleCategory} checked={category.includes('Kids')} /> Kids
-            </p>
-          </div>
-        </div>
-
-        {/* SubCategory Filter */}
-        <div className={`border border-gray-300 pl-5 py-3 my-5 ${showFilter ? '' : 'hidden'} sm:block`}>
-          <p className='mb-3 text-sm font-medium'>TYPE</p>
-          <div className='flex flex-col gap-2 text-sm font-light text-gray-700'>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Topwear'} onChange={toggleSubCategory} checked={subCategory.includes('Topwear')} /> Topwear
-            </p>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Bottomwear'} onChange={toggleSubCategory} checked={subCategory.includes('Bottomwear')} /> Bottomwear
-            </p>
-            <p className='flex gap-2'>
-              <input className='w-3' type="checkbox" value={'Winterwear'} onChange={toggleSubCategory} checked={subCategory.includes('Winterwear')} /> Winterwear
-            </p>
-          </div>
-        </div>
-
-        {/* Size Filter */}
-        <div className={`border border-gray-300 pl-5 py-3 my-5 ${showFilter ? '' : 'hidden'} sm:block`}>
-          <p className='mb-3 text-sm font-medium'>SIZE</p>
-          <div className='flex flex-wrap gap-2'>
-            {availableSizes.map((size, index) => (
-              <button
-                key={index}
-                onClick={() => toggleSize(size)}
-                className={`px-3 py-1 border text-sm ${sizes.includes(size) ? 'bg-black text-white' : 'bg-white text-gray-700'}`}
-              >
-                {size}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Color Filter */}
-        <div className={`border border-gray-300 pl-5 py-3 my-5 ${showFilter ? '' : 'hidden'} sm:block`}>
-          <p className='mb-3 text-sm font-medium'>COLOR</p>
-          <div className='flex flex-wrap gap-2'>
-            {availableColors.map((color, index) => (
-              <button
-                key={index}
-                onClick={() => toggleColor(color.name)}
-                className={`w-8 h-8 rounded-full border-2 ${colors.includes(color.name) ? 'border-black' : 'border-gray-300'}`}
-                style={{ backgroundColor: color.hex }}
-                title={color.name}
-              >
-                {colors.includes(color.name) && (
-                  <svg className='w-full h-full' fill='white' viewBox='0 0 24 24'>
-                    <path d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' />
-                  </svg>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Price Range Filter */}
-        <div className={`border border-gray-300 pl-5 py-3 my-5 ${showFilter ? '' : 'hidden'} sm:block`}>
-          <p className='mb-3 text-sm font-medium'>PRICE RANGE</p>
-          <div className='flex flex-col gap-2 text-sm'>
-            <div className='flex gap-2 items-center'>
-              <input
-                type='number'
-                placeholder='Min'
-                value={priceRange.min}
-                onChange={(e) => setPriceRange({ ...priceRange, min: Number(e.target.value) })}
-                className='border px-2 py-1 w-20'
-              />
-              <span>-</span>
-              <input
-                type='number'
-                placeholder='Max'
-                value={priceRange.max}
-                onChange={(e) => setPriceRange({ ...priceRange, max: Number(e.target.value) })}
-                className='border px-2 py-1 w-20'
-              />
+        {/* Filter Content */}
+        <div className='p-4 sm:p-0'>
+          {/* Category Filter */}
+          <div className='border border-gray-300 pl-5 py-3 mt-6 sm:mt-6'>
+            <p className='mb-3 text-sm font-medium'>CATEGORIES</p>
+            <div className='flex flex-col gap-2 text-sm font-light text-gray-700'>
+              <p className='flex gap-2'>
+                <input className='w-3' type="checkbox" value={'Men'} onChange={toggleCategory} checked={category.includes('Men')} /> Men
+              </p>
+              <p className='flex gap-2'>
+                <input className='w-3' type="checkbox" value={'Women'} onChange={toggleCategory} checked={category.includes('Women')} /> Women
+              </p>
+              <p className='flex gap-2'>
+                <input className='w-3' type="checkbox" value={'Kids'} onChange={toggleCategory} checked={category.includes('Kids')} /> Kids
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* Clear All Filters */}
-        {hasActiveFilters() && (
+          {/* SubCategory Filter */}
+          <div className='border border-gray-300 pl-5 py-3 my-5'>
+            <p className='mb-3 text-sm font-medium'>TYPE</p>
+            <div className='flex flex-col gap-2 text-sm font-light text-gray-700'>
+              <p className='flex gap-2'>
+                <input className='w-3' type="checkbox" value={'Topwear'} onChange={toggleSubCategory} checked={subCategory.includes('Topwear')} /> Topwear
+              </p>
+              <p className='flex gap-2'>
+                <input className='w-3' type="checkbox" value={'Bottomwear'} onChange={toggleSubCategory} checked={subCategory.includes('Bottomwear')} /> Bottomwear
+              </p>
+              <p className='flex gap-2'>
+                <input className='w-3' type="checkbox" value={'Winterwear'} onChange={toggleSubCategory} checked={subCategory.includes('Winterwear')} /> Winterwear
+              </p>
+            </div>
+          </div>
+
+          {/* Size Filter */}
+          <div className='border border-gray-300 pl-5 py-3 my-5'>
+            <p className='mb-3 text-sm font-medium'>SIZE</p>
+            <div className='flex flex-wrap gap-2'>
+              {availableSizes.map((size, index) => (
+                <button
+                  key={index}
+                  onClick={() => toggleSize(size)}
+                  className={`px-3 py-1 border text-sm ${sizes.includes(size) ? 'bg-black text-white' : 'bg-white text-gray-700'}`}
+                >
+                  {size}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Color Filter */}
+          <div className='border border-gray-300 pl-5 py-3 my-5'>
+            <p className='mb-3 text-sm font-medium'>COLOR</p>
+            <div className='flex flex-wrap gap-2'>
+              {availableColors.map((color, index) => (
+                <button
+                  key={index}
+                  onClick={() => toggleColor(color.name)}
+                  className={`w-8 h-8 rounded-full border-2 ${colors.includes(color.name) ? 'border-black' : 'border-gray-300'}`}
+                  style={{ backgroundColor: color.hex }}
+                  title={color.name}
+                >
+                  {colors.includes(color.name) && (
+                    <svg className='w-full h-full' fill='white' viewBox='0 0 24 24'>
+                      <path d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Price Range Filter */}
+          <div className='border border-gray-300 pl-5 py-3 pr-5 my-5'>
+            <p className='mb-3 text-sm font-medium'>PRICE RANGE</p>
+            <div className='flex flex-col gap-4'>
+              {/* Price Display */}
+              <div className='flex justify-between text-sm font-medium'>
+                <span>₹{priceRange.min}</span>
+                <span>₹{priceRange.max}</span>
+              </div>
+
+              {/* Dual Range Slider */}
+              <div className='relative h-1 bg-gray-200 rounded'>
+                {/* Active Range Bar */}
+                <div
+                  className='absolute h-full bg-black rounded'
+                  style={{
+                    left: `${(priceRange.min / 10000) * 100}%`,
+                    right: `${100 - (priceRange.max / 10000) * 100}%`
+                  }}
+                />
+
+                {/* Min Range Slider */}
+                <input
+                  type='range'
+                  min='0'
+                  max='10000'
+                  step='100'
+                  value={priceRange.min}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    if (value < priceRange.max) {
+                      setPriceRange({ ...priceRange, min: value });
+                    }
+                  }}
+                  className='absolute w-full h-1 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-black [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-black [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:shadow-md'
+                />
+
+                {/* Max Range Slider */}
+                <input
+                  type='range'
+                  min='0'
+                  max='10000'
+                  step='100'
+                  value={priceRange.max}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    if (value > priceRange.min) {
+                      setPriceRange({ ...priceRange, max: value });
+                    }
+                  }}
+                  className='absolute w-full h-1 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-black [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-black [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:shadow-md'
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Clear All Filters */}
+          {hasActiveFilters() && (
+            <button
+              onClick={clearAllFilters}
+              className='w-full border border-black py-2 text-sm hover:bg-black hover:text-white transition-colors mt-4'
+            >
+              CLEAR ALL FILTERS
+            </button>
+          )}
+
+          {/* Mobile Apply Button */}
           <button
-            onClick={clearAllFilters}
-            className='w-full border border-black py-2 text-sm hover:bg-black hover:text-white transition-colors mt-4'
+            onClick={() => setShowFilter(false)}
+            className='sm:hidden w-full bg-black text-white py-3 text-sm font-medium uppercase tracking-wider mt-4 hover:bg-gray-800 transition-colors'
           >
-            CLEAR ALL FILTERS
+            Apply Filters
           </button>
-        )}
+        </div>
       </div>
 
       {/* Right Side */}
