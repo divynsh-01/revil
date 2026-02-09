@@ -13,17 +13,20 @@ const getCart = async (req, res) => {
             await cart.save();
         }
 
-        // Convert cart items array to frontend format (nested object)
+        // Convert cart items array to frontend format (nested object) for backward compatibility
         const cartData = {};
         cart.items.forEach(item => {
             const productId = item.productId.toString();
             if (!cartData[productId]) {
                 cartData[productId] = {};
             }
-            cartData[productId][item.size] = item.quantity;
+            // Use variantId or size-color key
+            const key = item.variantId ? item.variantId.toString() : (item.color ? `${item.size}-${item.color}` : item.size);
+            cartData[productId][key] = item.quantity;
         });
 
-        res.json({ success: true, cartData });
+        // Return both cartData (for compatibility) and cart object (for Cart.jsx)
+        res.json({ success: true, cartData, cart });
 
     } catch (error) {
         console.log(error);
@@ -34,7 +37,7 @@ const getCart = async (req, res) => {
 // Update cart (add/update/remove items)
 const updateCart = async (req, res) => {
     try {
-        const { userId, itemId, size, quantity } = req.body;
+        const { userId, itemId, variantId, size, color, quantity } = req.body;
 
         // Get product details
         const product = await productModel.findById(itemId);
@@ -48,19 +51,50 @@ const updateCart = async (req, res) => {
             cart = new cartModel({ userId, items: [] });
         }
 
-        // Find existing item
-        const existingItemIndex = cart.items.findIndex(
-            item => item.productId.toString() === itemId && item.size === size
-        );
+        let itemSize = size;
+        let itemColor = color;
+        let itemPrice = product.discountPrice || product.price;
+        let itemImage = product.images?.[0]?.url || product.images?.[0] || product.image?.[0] || "";
+
+        // If variantId provided, get variant data
+        if (variantId && product.variants && product.variants.length > 0) {
+            const variant = product.variants.id(variantId);
+            if (variant) {
+                itemSize = variant.size;
+                itemColor = variant.color;
+                itemPrice = variant.price;
+                // Get variant-specific image
+                if (variant.images && variant.images.length > 0) {
+                    itemImage = variant.images[0].url;
+                }
+            }
+        }
+
+        // Find existing item (match by variantId OR size+color)
+        let existingItemIndex;
+        if (variantId) {
+            existingItemIndex = cart.items.findIndex(
+                item => item.productId.toString() === itemId &&
+                    item.variantId && item.variantId.toString() === variantId
+            );
+        } else {
+            existingItemIndex = cart.items.findIndex(
+                item => item.productId.toString() === itemId &&
+                    item.size === itemSize &&
+                    (item.color || null) === (itemColor || null)
+            );
+        }
 
         if (quantity > 0) {
             // Update or add item
             const cartItem = {
                 productId: itemId,
+                variantId: variantId || null,
                 title: product.title || product.name,
-                price: product.discountPrice || product.price,
-                image: product.images?.[0]?.url || product.images?.[0] || product.image?.[0] || "",
-                size,
+                price: itemPrice,
+                image: itemImage,
+                size: itemSize,
+                color: itemColor || null,
                 quantity
             };
 
@@ -90,7 +124,7 @@ const updateCart = async (req, res) => {
 const addToCart = async (req, res) => {
     try {
         console.log("Add to cart request body:", req.body);
-        const { userId, itemId, size, quantity } = req.body;
+        const { userId, itemId, variantId, size, color, quantity } = req.body;
 
         const productId = itemId;
         const productData = await productModel.findById(productId);
@@ -107,10 +141,37 @@ const addToCart = async (req, res) => {
             cart = new cartModel({ userId, items: [] });
         }
 
-        // Check if item already exists
-        const existingItemIndex = cart.items.findIndex(
-            item => item.productId.toString() === productId && item.size === size
-        );
+        let itemSize = size;
+        let itemColor = color;
+        let itemPrice = productData.discountPrice || productData.price || 0;
+        let itemVariantId = variantId;
+
+        // NEW MODEL: If variantId is provided, extract data from variant
+        if (variantId && productData.variants && productData.variants.length > 0) {
+            const variant = productData.variants.id(variantId);
+            if (variant) {
+                itemSize = variant.size;
+                itemColor = variant.color;
+                itemPrice = variant.price;
+            } else {
+                return res.json({ success: false, message: "Variant not found" });
+            }
+        }
+
+        // Check if item already exists (match by productId and variantId OR size+color)
+        let existingItemIndex;
+        if (variantId) {
+            existingItemIndex = cart.items.findIndex(
+                item => item.productId.toString() === productId &&
+                    item.variantId && item.variantId.toString() === variantId
+            );
+        } else {
+            existingItemIndex = cart.items.findIndex(
+                item => item.productId.toString() === productId &&
+                    item.size === itemSize &&
+                    (item.color || null) === (itemColor || null)
+            );
+        }
 
         if (existingItemIndex > -1) {
             console.log("Updating existing item quantity");
@@ -120,18 +181,32 @@ const addToCart = async (req, res) => {
 
             // Handle image field safely
             let image = "";
-            if (productData.images && productData.images.length > 0) {
-                image = productData.images[0].url || productData.images[0];
-            } else if (productData.image && productData.image.length > 0) {
-                image = productData.image[0];
+
+            // Try to get variant-specific image if available
+            if (variantId && productData.variants && productData.variants.length > 0) {
+                const variant = productData.variants.id(variantId);
+                if (variant && variant.images && variant.images.length > 0) {
+                    image = variant.images[0].url;
+                }
+            }
+
+            // Fallback to product images
+            if (!image) {
+                if (productData.images && productData.images.length > 0) {
+                    image = productData.images[0].url || productData.images[0];
+                } else if (productData.image && productData.image.length > 0) {
+                    image = productData.image[0];
+                }
             }
 
             cart.items.push({
                 productId,
+                variantId: itemVariantId || null,
                 title: productData.title || productData.name || "Unknown Product",
-                price: productData.discountPrice || productData.price || 0,
+                price: itemPrice,
                 image: image,
-                size,
+                size: itemSize,
+                color: itemColor || null,
                 quantity: quantity || 1
             });
         }
@@ -146,6 +221,7 @@ const addToCart = async (req, res) => {
         res.json({ success: false, message: error.message });
     }
 };
+
 
 
 // Remove item from cart

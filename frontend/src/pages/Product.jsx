@@ -14,6 +14,10 @@ const Product = () => {
   const [size, setSize] = useState('')
   const [color, setColor] = useState('')
 
+  // NEW: Variant-based pricing
+  const [selectedVariant, setSelectedVariant] = useState(null);
+  const [displayPrice, setDisplayPrice] = useState(0);
+
   // Zoom functionality states
   const [showZoom, setShowZoom] = useState(false);
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
@@ -28,6 +32,11 @@ const Product = () => {
           ? (typeof item.images[0] === 'string' ? item.images[0] : item.images[0].url)
           : (item.image && item.image[0] ? item.image[0] : '');
         setImage(firstImage)
+
+        // Set initial price
+        const initialPrice = item.basePrice || item.discountPrice || item.price || 0;
+        setDisplayPrice(initialPrice);
+
         return null;
       }
     })
@@ -37,6 +46,55 @@ const Product = () => {
   useEffect(() => {
     fetchProductData();
   }, [productId, products])
+
+  // Update images when color changes
+  useEffect(() => {
+    if (productData && productData.images && productData.images.length > 0) {
+      // Get images for selected color
+      const getDisplayImages = () => {
+        if (color && productData.colors?.length > 0) {
+          // Show images for selected color OR general images (color=null)
+          return productData.images.filter(img =>
+            !img.color || img.color === color
+          );
+        }
+        // No color selected or no colors defined - show all images
+        return productData.images;
+      };
+
+      const displayImages = getDisplayImages();
+      if (displayImages.length > 0) {
+        const firstImg = displayImages[0];
+        const imageUrl = typeof firstImg === 'string' ? firstImg : firstImg.url;
+        setImage(imageUrl);
+      }
+    }
+  }, [color, productData])
+
+  // NEW: Update selected variant and price when size/color changes
+  useEffect(() => {
+    if (productData && size && color) {
+      // Check if product has variants array (new model)
+      if (productData.variants && productData.variants.length > 0) {
+        const variant = productData.variants.find(v =>
+          v.size === size && v.color === color
+        );
+
+        if (variant) {
+          setSelectedVariant(variant);
+          setDisplayPrice(variant.price);
+        }
+      } else {
+        // Fallback to old model (backward compatibility)
+        setSelectedVariant(null);
+        setDisplayPrice(productData.discountPrice || productData.price || 0);
+      }
+    } else if (productData) {
+      // No variant selected, show base price
+      setSelectedVariant(null);
+      setDisplayPrice(productData.basePrice || productData.discountPrice || productData.price || 0);
+    }
+  }, [size, color, productData])
 
   // Handle mouse move for zoom
   const handleMouseMove = (e) => {
@@ -55,18 +113,31 @@ const Product = () => {
         <div className='flex-1 flex flex-col-reverse gap-3 sm:flex-row'>
           <div className='flex sm:flex-col overflow-x-auto sm:overflow-y-scroll justify-between sm:justify-normal sm:w-[18.7%] w-full scrollbar-hide'>
             {
-              (productData.images || productData.image || []).map((item, index) => {
-                const imgUrl = typeof item === 'string' ? item : item.url;
-                return (
-                  <img
-                    onClick={() => setImage(imgUrl)}
-                    src={imgUrl}
-                    key={index}
-                    className='w-[24%] sm:w-full sm:mb-3 flex-shrink-0 cursor-pointer border-2 border-transparent hover:border-neutral-300 transition-all'
-                    alt=""
-                  />
-                )
-              })
+              (() => {
+                // Filter images based on selected color
+                let displayImages = productData.images || productData.image || [];
+
+                if (color && productData.colors?.length > 0) {
+                  // Show images for selected color OR general images (color=null)
+                  displayImages = displayImages.filter(img => {
+                    if (typeof img === 'string') return true; // Backward compatibility
+                    return !img.color || img.color === color;
+                  });
+                }
+
+                return displayImages.map((item, index) => {
+                  const imgUrl = typeof item === 'string' ? item : item.url;
+                  return (
+                    <img
+                      onClick={() => setImage(imgUrl)}
+                      src={imgUrl}
+                      key={index}
+                      className='w-[24%] sm:w-full sm:mb-3 flex-shrink-0 cursor-pointer border-2 border-transparent hover:border-neutral-300 transition-all'
+                      alt=""
+                    />
+                  );
+                });
+              })()
             }
           </div>
 
@@ -109,14 +180,14 @@ const Product = () => {
             <p className='pl-2'>(122)</p>
           </div>
           <div className='mt-5 flex items-center gap-3'>
-            {productData.discountPrice ? (
-              <>
-                <p className='text-3xl font-medium text-orange-600'>{currency}{productData.discountPrice}</p>
-                <p className='text-xl text-gray-400 line-through'>{currency}{productData.price}</p>
-                <span className='bg-orange-100 text-orange-600 px-2 py-1 text-xs font-medium rounded'>SAVE {Math.round(((productData.price - productData.discountPrice) / productData.price) * 100)}%</span>
-              </>
-            ) : (
-              <p className='text-3xl font-medium'>{currency}{productData.price}</p>
+            <p className='text-3xl font-medium'>
+              {currency}{displayPrice}
+              {!selectedVariant && productData.variants && productData.variants.length > 0 && (
+                <span className='text-sm text-gray-500 ml-2'>from</span>
+              )}
+            </p>
+            {productData.price && productData.price !== displayPrice && (
+              <p className='text-xl text-gray-400 line-through'>{currency}{productData.price}</p>
             )}
           </div>
           <p className='mt-5 text-gray-500 md:w-4/5'>{productData.description}</p>
@@ -126,16 +197,43 @@ const Product = () => {
             <div className='flex flex-col gap-4 my-6'>
               <p>Select Color</p>
               <div className='flex gap-2 flex-wrap'>
-                {productData.colors.map((item, index) => (
-                  <button
-                    onClick={() => setColor(item)}
-                    className={`border py-2 px-4 bg-gray-100 ${item === color ? 'border-orange-500 bg-orange-50' : ''}`}
-                    key={index}
-                  >
-                    {item}
-                  </button>
-                ))}
+                {productData.colors.map((item, index) => {
+                  // Check stock using variants array (new model)  or stockByVariant (old model)
+                  let stock = 0;
+                  let isOutOfStock = false;
+
+                  if (size) {
+                    if (productData.variants && productData.variants.length > 0) {
+                      // NEW MODEL: Find variant by size and color
+                      const variant = productData.variants.find(v => v.size === size && v.color === item);
+                      stock = variant ? variant.stock : 0;
+                      isOutOfStock = variant ? variant.stock === 0 : true;
+                    } else {
+                      // OLD MODEL: Use stockByVariant map
+                      const variantKey = `${size}-${item}`;
+                      stock = productData.stockByVariant ? productData.stockByVariant[variantKey] : 0;
+                      isOutOfStock = stock === 0;
+                    }
+                  }
+
+                  return (
+                    <button
+                      onClick={() => !isOutOfStock && setColor(item)}
+                      className={`border py-2 px-4 relative ${isOutOfStock && size ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-100'
+                        } ${item === color ? 'border-orange-500 bg-orange-50' : ''}`}
+                      key={index}
+                      disabled={isOutOfStock && size}
+                    >
+                      {item}
+                      {stock > 0 && stock < 5 && size && (
+                        <span className='absolute -top-2 -right-2 bg-orange-500 text-white text-xs px-1 rounded'>{stock}</span>
+                      )}
+                      {isOutOfStock && size && <span className='text-xs block mt-1'>Out</span>}
+                    </button>
+                  );
+                })}
               </div>
+              {!size && <p className='text-sm text-gray-500'>Select size first to see color availability</p>}
             </div>
           )}
 
@@ -143,28 +241,67 @@ const Product = () => {
           <div className='flex flex-col gap-4 my-6'>
             <p>Select Size</p>
             <div className='flex gap-2'>
-              {productData.sizes.map((item, index) => {
-                const stock = productData.stockByVariant ? productData.stockByVariant[item] : null;
-                const isOutOfStock = stock !== null && stock === 0;
+              {productData.sizes && productData.sizes.map((item, index) => {
+                // Check stock using variants array (new model) or stockByVariant (old model)
+                let stock = 0;
+                let isOutOfStock = false;
+
+                if (color) {
+                  if (productData.variants && productData.variants.length > 0) {
+                    // NEW MODEL: Find variant by size and color
+                    const variant = productData.variants.find(v => v.size === item && v.color === color);
+                    stock = variant ? variant.stock : 0;
+                    isOutOfStock = variant ? variant.stock === 0 : true;
+                  } else {
+                    // OLD MODEL: Use stockByVariant map
+                    const variantKey = `${item}-${color}`;
+                    stock = productData.stockByVariant ? productData.stockByVariant[variantKey] : 0;
+                    isOutOfStock = stock === 0;
+                  }
+                } else {
+                  // No color selected - check if ANY color has stock for this size
+                  if (productData.variants && productData.variants.length > 0) {
+                    const hasStock = productData.variants.some(v => v.size === item && v.stock > 0);
+                    isOutOfStock = !hasStock;
+                  }
+                }
+
                 return (
                   <button
                     onClick={() => !isOutOfStock && setSize(item)}
-                    className={`border py-2 px-4 relative ${isOutOfStock ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-100'
+                    className={`border py-2 px-4 relative ${isOutOfStock && color ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-100'
                       } ${item === size ? 'border-orange-500' : ''}`}
                     key={index}
-                    disabled={isOutOfStock}
+                    disabled={isOutOfStock && color}
                   >
                     {item}
-                    {stock !== null && stock < 5 && stock > 0 && (
+                    {stock > 0 && stock < 5 && color && (
                       <span className='absolute -top-2 -right-2 bg-orange-500 text-white text-xs px-1 rounded'>{stock}</span>
                     )}
-                    {isOutOfStock && <span className='absolute inset-0 flex items-center justify-center text-xs'>Out</span>}
+                    {isOutOfStock && color && <span className='text-xs block mt-1'>Out</span>}
                   </button>
-                )
+                );
               })}
             </div>
+            {!color && productData.colors && productData.colors.length > 0 && (
+              <p className='text-sm text-gray-500'>💡 Select color first to see exact stock for each size</p>
+            )}
           </div>
-          <button onClick={() => addToCart(productData._id, size)} className='bg-black text-white px-8 py-3 text-sm active:bg-gray-700'>ADD TO CART</button>
+
+          <button
+            onClick={() => {
+              // If product has variants (new model), send variantId
+              if (selectedVariant) {
+                addToCart(productData._id, selectedVariant._id);
+              } else {
+                // Backward compatibility: send size and color
+                addToCart(productData._id, size, color);
+              }
+            }}
+            className='bg-black text-white px-8 py-3 text-sm active:bg-gray-700'
+          >
+            ADD TO CART
+          </button>
           <hr className='mt-8 sm:w-4/5' />
           <div className='text-sm text-gray-500 mt-5 flex flex-col gap-1'>
             <p>100% Original product.</p>
