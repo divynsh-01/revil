@@ -313,7 +313,8 @@ const allOrders = async (req, res) => {
 
     try {
 
-        const orders = await orderModel.find({}).sort({ createdAt: -1 })
+        const orders = await orderModel.find({}).populate('userId', 'email').sort({ createdAt: -1 })
+
         res.json({ success: true, orders })
 
     } catch (error) {

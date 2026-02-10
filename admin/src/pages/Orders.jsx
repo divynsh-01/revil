@@ -103,6 +103,8 @@ const Orders = ({ token }) => {
               <img className='w-12' src={assets.parcel_icon} alt="" />
               <div>
                 <p className='font-medium mb-2'>Order ID: {order.orderId}</p>
+                <p className='text-xs text-gray-500 mb-2'>User ID: {order.userId?._id}</p>
+                <p className='text-xs text-gray-500 mb-2'>Email: {order.userId?.email}</p>
                 <div>
                   {order.items.map((item, index) => {
                     if (index === order.items.length - 1) {
