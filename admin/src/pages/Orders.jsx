@@ -13,6 +13,20 @@ const Orders = ({ token }) => {
     trackingId: '',
     trackingUrl: ''
   })
+  const [statusFilter, setStatusFilter] = useState("All")
+  const [statusList, setStatusList] = useState([])
+
+  const fetchStatuses = async () => {
+    try {
+      const response = await axios.get(backendUrl + '/api/order/status-list')
+      if (response.data.success) {
+        setStatusList(response.data.statusList)
+      }
+    } catch (error) {
+      console.log(error)
+      toast.error(error.message)
+    }
+  }
 
   const fetchAllOrders = async () => {
 
@@ -63,15 +77,28 @@ const Orders = ({ token }) => {
   }
 
   useEffect(() => {
+    fetchStatuses();
     fetchAllOrders();
   }, [token])
 
   return (
     <div>
-      <h3 className='text-2xl font-bold mb-4'>Order Management</h3>
+      <div className='flex justify-between items-center mb-4'>
+        <h3 className='text-2xl font-bold'>Order Management</h3>
+        <select
+          onChange={(e) => setStatusFilter(e.target.value)}
+          value={statusFilter}
+          className='border-2 border-gray-300 p-2 rounded-md text-sm'
+        >
+          <option value="All">All Status</option>
+          {statusList.map((status, index) => (
+            <option key={index} value={status.value}>{status.label}</option>
+          ))}
+        </select>
+      </div>
       <div>
         {
-          orders.map((order, index) => (
+          orders.filter(order => statusFilter === "All" || order.orderStatus === statusFilter).map((order, index) => (
             <div className='grid grid-cols-1 sm:grid-cols-[0.5fr_2fr_1fr] lg:grid-cols-[0.5fr_2fr_1fr_1fr_1fr] gap-3 items-start border-2 border-gray-200 p-5 md:p-8 my-3 md:my-4 text-xs sm:text-sm text-gray-700' key={index}>
               <img className='w-12' src={assets.parcel_icon} alt="" />
               <div>
@@ -184,11 +211,9 @@ const Orders = ({ token }) => {
               )}
 
               <select onChange={(event) => statusHandler(event, order._id)} value={order.orderStatus} className='p-2 font-semibold'>
-                <option value="Order Placed">Order Placed</option>
-                <option value="Packing">Packing</option>
-                <option value="Shipped">Shipped</option>
-                <option value="Out for delivery">Out for delivery</option>
-                <option value="Delivered">Delivered</option>
+                {statusList.map((status, index) => (
+                  <option key={index} value={status.value}>{status.label}</option>
+                ))}
               </select>
             </div>
           ))

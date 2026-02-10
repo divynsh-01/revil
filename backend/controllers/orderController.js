@@ -393,4 +393,14 @@ const getOrder = async (req, res) => {
     }
 }
 
-export { verifyRazorpay, verifyStripe, placeOrder, placeOrderStripe, placeOrderRazorpay, allOrders, userOrders, updateStatus, updateTracking, getOrder }
+const getStatuses = async (req, res) => {
+    try {
+        const { ORDER_STATUS_DETAILS } = await import('../config/orderStatus.js');
+        res.json({ success: true, statusList: ORDER_STATUS_DETAILS });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
+export { verifyRazorpay, verifyStripe, placeOrder, placeOrderStripe, placeOrderRazorpay, allOrders, userOrders, updateStatus, updateTracking, getOrder, getStatuses }
