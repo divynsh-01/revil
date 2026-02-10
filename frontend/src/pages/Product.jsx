@@ -169,7 +169,9 @@ const Product = () => {
 
         {/* -------- Product Info ---------- */}
         <div className='flex-1'>
-          <h1 className='font-medium text-2xl mt-2'>{productData.title || productData.name}</h1>
+          <h1 className='font-medium text-2xl mt-2'>
+            {selectedVariant && selectedVariant.variantTitle ? selectedVariant.variantTitle : (productData.title || productData.name)}
+          </h1>
           {productData.brand && <p className='text-gray-600 mt-1 text-sm'>Brand: <span className='font-medium'>{productData.brand}</span></p>}
           <div className=' flex items-center gap-1 mt-2'>
             <img src={assets.star_icon} alt="" className="w-3 5" />
