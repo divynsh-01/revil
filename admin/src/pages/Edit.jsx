@@ -216,23 +216,63 @@ const Edit = ({ token }) => {
             </div>
 
             <div className='w-full'>
-                <p className='mb-2'>Stock Quantity (per size)</p>
-                <div className='flex gap-3 flex-wrap'>
-                    {sizes.map((size) => (
-                        <div key={size} className='flex flex-col'>
-                            <label className='text-sm mb-1'>{size}</label>
-                            <input
-                                type="number"
-                                min="0"
-                                placeholder='0'
-                                className='w-20 px-2 py-1 border'
-                                value={stockByVariant[size] || ''}
-                                onChange={(e) => setStockByVariant(prev => ({ ...prev, [size]: parseInt(e.target.value) || 0 }))}
-                            />
-                        </div>
-                    ))}
-                </div>
+                <p className='mb-2'>Stock Quantity (per variant)</p>
+                {colors.length > 0 ? (
+                    // Grid view for size + color combinations
+                    <div className='overflow-x-auto'>
+                        <table className='border-collapse border border-gray-300'>
+                            <thead>
+                                <tr>
+                                    <th className='border border-gray-300 px-3 py-2 bg-gray-50 text-sm'>Size / Color</th>
+                                    {colors.map((color) => (
+                                        <th key={color} className='border border-gray-300 px-3 py-2 bg-gray-50 text-sm'>{color}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sizes.map((size) => (
+                                    <tr key={size}>
+                                        <td className='border border-gray-300 px-3 py-2 bg-gray-50 font-medium text-sm'>{size}</td>
+                                        {colors.map((color) => {
+                                            const variantKey = `${size}-${color}`;
+                                            return (
+                                                <td key={variantKey} className='border border-gray-300 px-2 py-2'>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        placeholder='0'
+                                                        className='w-16 px-2 py-1 border text-center'
+                                                        value={stockByVariant[variantKey] || ''}
+                                                        onChange={(e) => setStockByVariant(prev => ({ ...prev, [variantKey]: parseInt(e.target.value) || 0 }))}
+                                                    />
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : (
+                    // Fallback for products without colors (backward compatibility)
+                    <div className='flex gap-3 flex-wrap'>
+                        {sizes.map((size) => (
+                            <div key={size} className='flex flex-col'>
+                                <label className='text-sm mb-1'>{size}</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    placeholder='0'
+                                    className='w-20 px-2 py-1 border'
+                                    value={stockByVariant[size] || ''}
+                                    onChange={(e) => setStockByVariant(prev => ({ ...prev, [size]: parseInt(e.target.value) || 0 }))}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )}
                 {sizes.length === 0 && <p className='text-sm text-gray-500'>Please select sizes first</p>}
+                {sizes.length > 0 && colors.length === 0 && <p className='text-sm text-orange-600 mt-2'>Note: No colors selected. Stock will be tracked by size only.</p>}
             </div>
 
             <div className='flex gap-4 mt-2 flex-wrap'>

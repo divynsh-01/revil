@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react'
+import React, { useContext, useState, useEffect } from 'react'
 import { ShopContext } from '../context/ShopContext'
 import Title from './Title';
 import axios from 'axios';
@@ -6,14 +6,23 @@ import { toast } from 'react-toastify';
 
 const CartTotal = () => {
 
-  const { currency, delivery_fee, getCartAmount, backendUrl } = useContext(ShopContext);
+  const { currency, delivery_fee, getCartAmount, backendUrl, cartItems } = useContext(ShopContext);
 
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [isApplying, setIsApplying] = useState(false);
+  const [cartTotal, setCartTotal] = useState(0);
 
-  const cartTotal = getCartAmount();
+  // Calculate cart total (async)
+  useEffect(() => {
+    const fetchCartTotal = async () => {
+      const total = await getCartAmount();
+      setCartTotal(total);
+    };
+    fetchCartTotal();
+  }, [cartItems]); // Recalculate when cart changes
+
   const finalTotal = cartTotal === 0 ? 0 : cartTotal + delivery_fee - couponDiscount;
 
   const handleApplyCoupon = async () => {
