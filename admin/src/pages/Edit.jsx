@@ -20,14 +20,64 @@ const Edit = ({ token }) => {
     const [price, setPrice] = useState("");
     const [discountPrice, setDiscountPrice] = useState("");
     const [brand, setBrand] = useState("");
-    const [category, setCategory] = useState("Men");
-    const [subCategory, setSubCategory] = useState("Topwear");
+    const [isBrandManual, setIsBrandManual] = useState(false); // NEW: Toggle for manual brand
+    const [category, setCategory] = useState("");
+    const [subCategory, setSubCategory] = useState("");
     const [bestseller, setBestseller] = useState(false);
     const [isFeatured, setIsFeatured] = useState(false);
     const [isActive, setIsActive] = useState(true);
     const [sizes, setSizes] = useState([]);
     const [colors, setColors] = useState([]);
     const [stockByVariant, setStockByVariant] = useState({});
+    const [variantPrices, setVariantPrices] = useState({}); // NEW: Per-variant pricing
+    const [colorTitles, setColorTitles] = useState({}); // NEW: Title per color
+
+    const [catList, setCatList] = useState([]);
+    const [subCatList, setSubCatList] = useState([]);
+
+    // Fetch Categories
+    const fetchCategories = async () => {
+        try {
+            const response = await axios.get(backendUrl + '/api/category/list')
+            if (response.data.success) {
+                setCatList(response.data.categories)
+            } else {
+                toast.error(response.data.message)
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error(error.message)
+        }
+    }
+
+    // Fetch SubCategories
+    const fetchSubCategories = async (categoryId) => {
+        try {
+            const response = await axios.get(backendUrl + '/api/subcategory/active/' + categoryId)
+            if (response.data.success) {
+                setSubCatList(response.data.subCategories)
+            } else {
+                toast.error(response.data.message)
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error(error.message)
+        }
+    }
+
+    useEffect(() => {
+        fetchCategories()
+    }, [])
+
+    useEffect(() => {
+        if (catList.length > 0 && category) {
+            let selectedCat = catList.find(cat => cat.name === category)
+            if (selectedCat) {
+                fetchSubCategories(selectedCat.categoryId)
+            }
+        }
+    }, [category, catList])
+
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -39,7 +89,12 @@ const Edit = ({ token }) => {
                     setDescription(product.description)
                     setPrice(product.price)
                     setDiscountPrice(product.discountPrice || "")
-                    setBrand(product.brand)
+                    setBrand(product.brand || "Revi'L")
+                    // If brand is Revi'L, keep manual false. If different, set manual true.
+                    if (product.brand && product.brand !== "Revi'L") {
+                        setIsBrandManual(true);
+                    }
+
                     setCategory(product.category)
                     setSubCategory(product.subCategory)
                     setBestseller(product.bestseller)
@@ -48,6 +103,22 @@ const Edit = ({ token }) => {
                     setSizes(product.sizes)
                     setColors(product.colors || [])
                     setStockByVariant(product.stockByVariant || {})
+
+                    // Populate variant prices and color titles from variants array if exists
+                    if (product.variants && product.variants.length > 0) {
+                        const prices = {};
+                        const titles = {};
+
+                        product.variants.forEach(v => {
+                            const key = `${v.size}-${v.color}`;
+                            prices[key] = v.price;
+                            if (v.color && v.variantTitle) {
+                                titles[v.color] = v.variantTitle;
+                            }
+                        });
+                        setVariantPrices(prices);
+                        setColorTitles(titles);
+                    }
 
                     // Note: We can't set file inputs with URL, so we just show them. 
                     // New uploads will replace them if needed.
@@ -84,6 +155,8 @@ const Edit = ({ token }) => {
             formData.append("sizes", JSON.stringify(sizes))
             formData.append("colors", JSON.stringify(colors))
             formData.append("stockByVariant", JSON.stringify(stockByVariant))
+            formData.append("variantPrices", JSON.stringify(variantPrices)) // NEW
+            formData.append("colorTitles", JSON.stringify(colorTitles)) // NEW
 
             image1 && formData.append("image1", image1)
             image2 && formData.append("image2", image2)
@@ -138,8 +211,31 @@ const Edit = ({ token }) => {
             </div>
 
             <div className='w-full'>
-                <p className='mb-2'>Brand Name</p>
-                <input onChange={(e) => setBrand(e.target.value)} value={brand} className='w-full max-w-[500px] px-3 py-2' type="text" placeholder='Enter brand name' />
+                <div className='flex justify-between items-center mb-2 max-w-[500px]'>
+                    <p>Brand Name</p>
+                    <div className='flex items-center gap-2'>
+                        <input
+                            type="checkbox"
+                            id="manualBrand"
+                            checked={isBrandManual}
+                            onChange={() => {
+                                setIsBrandManual(prev => {
+                                    if (prev) setBrand("Revi'L"); // Reset if unchecking
+                                    return !prev;
+                                });
+                            }}
+                        />
+                        <label htmlFor="manualBrand" className='text-sm text-gray-600 cursor-pointer'>Manual Brand Name</label>
+                    </div>
+                </div>
+                <input
+                    onChange={(e) => setBrand(e.target.value)}
+                    value={brand}
+                    className={`w-full max-w-[500px] px-3 py-2 ${!isBrandManual ? 'bg-gray-100 text-gray-500' : ''}`}
+                    type="text"
+                    placeholder='Enter brand name'
+                    disabled={!isBrandManual}
+                />
             </div>
 
             <div className='w-full'>
@@ -149,21 +245,21 @@ const Edit = ({ token }) => {
 
             <div className='flex flex-col sm:flex-row gap-2 w-full sm:gap-8'>
 
-                <div>
+                <div className='flex-1'>
                     <p className='mb-2'>Product category</p>
                     <select onChange={(e) => setCategory(e.target.value)} value={category} className='w-full px-3 py-2'>
-                        <option value="Men">Men</option>
-                        <option value="Women">Women</option>
-                        <option value="Kids">Kids</option>
+                        {catList.map((item) => (
+                            <option key={item._id} value={item.name}>{item.name}</option>
+                        ))}
                     </select>
                 </div>
 
-                <div>
+                <div className='flex-1'>
                     <p className='mb-2'>Sub category</p>
                     <select onChange={(e) => setSubCategory(e.target.value)} value={subCategory} className='w-full px-3 py-2'>
-                        <option value="Topwear">Topwear</option>
-                        <option value="Bottomwear">Bottomwear</option>
-                        <option value="Winterwear">Winterwear</option>
+                        {subCatList.map((item) => (
+                            <option key={item._id} value={item.name}>{item.name}</option>
+                        ))}
                     </select>
                 </div>
 
@@ -206,26 +302,53 @@ const Edit = ({ token }) => {
 
             <div>
                 <p className='mb-2'>Available Colors</p>
-                <div className='flex gap-3 flex-wrap'>
+                <div className='flex gap-3 flex-wrap mb-4'>
                     {["Black", "White", "Red", "Blue", "Green", "Yellow", "Pink", "Gray", "Navy", "Beige"].map((color) => (
                         <div key={color} onClick={() => setColors(prev => prev.includes(color) ? prev.filter(item => item !== color) : [...prev, color])}>
                             <p className={`${colors.includes(color) ? "bg-pink-100" : "bg-slate-200"} px-3 py-1 cursor-pointer text-sm`}>{color}</p>
                         </div>
                     ))}
                 </div>
+
+                {colors.length > 0 && (
+                    <div className='flex flex-col gap-3 mt-2'>
+                        <p className='text-sm font-medium'>Color-wise Titles (Optional)</p>
+                        {colors.map(color => (
+                            <div key={color} className='flex items-center gap-3'>
+                                <span className='w-16 text-sm'>{color}:</span>
+                                <input
+                                    type="text"
+                                    placeholder={`Title for ${color} variant`}
+                                    className='border px-3 py-1 w-full max-w-[400px] text-sm'
+                                    value={colorTitles[color] || ""}
+                                    onChange={(e) => setColorTitles(prev => ({ ...prev, [color]: e.target.value }))}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <div className='w-full'>
-                <p className='mb-2'>Stock Quantity (per variant)</p>
+                <p className='mb-2'>Variant Management (Stock & Price per variant)</p>
                 {colors.length > 0 ? (
                     // Grid view for size + color combinations
                     <div className='overflow-x-auto'>
-                        <table className='border-collapse border border-gray-300'>
+                        <table className='border-collapse border border-gray-300 w-full'>
                             <thead>
                                 <tr>
                                     <th className='border border-gray-300 px-3 py-2 bg-gray-50 text-sm'>Size / Color</th>
                                     {colors.map((color) => (
-                                        <th key={color} className='border border-gray-300 px-3 py-2 bg-gray-50 text-sm'>{color}</th>
+                                        <th key={color} colSpan={2} className='border border-gray-300 px-3 py-2 bg-gray-50 text-sm'>{color}</th>
+                                    ))}
+                                </tr>
+                                <tr>
+                                    <th className='border border-gray-300 px-2 py-1 bg-gray-100 text-xs'></th>
+                                    {colors.map((color) => (
+                                        <React.Fragment key={color}>
+                                            <th className='border border-gray-300 px-2 py-1 bg-blue-50 text-xs'>Stock</th>
+                                            <th className='border border-gray-300 px-2 py-1 bg-green-50 text-xs'>Price (₹)</th>
+                                        </React.Fragment>
                                     ))}
                                 </tr>
                             </thead>
@@ -236,22 +359,35 @@ const Edit = ({ token }) => {
                                         {colors.map((color) => {
                                             const variantKey = `${size}-${color}`;
                                             return (
-                                                <td key={variantKey} className='border border-gray-300 px-2 py-2'>
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        placeholder='0'
-                                                        className='w-16 px-2 py-1 border text-center'
-                                                        value={stockByVariant[variantKey] || ''}
-                                                        onChange={(e) => setStockByVariant(prev => ({ ...prev, [variantKey]: parseInt(e.target.value) || 0 }))}
-                                                    />
-                                                </td>
+                                                <React.Fragment key={variantKey}>
+                                                    <td className='border border-gray-300 p-1'>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            placeholder='0'
+                                                            className='w-full px-2 py-1 text-sm border-0 focus:outline-none focus:ring-1 focus:ring-blue-300'
+                                                            value={stockByVariant[variantKey] || ''}
+                                                            onChange={(e) => setStockByVariant(prev => ({ ...prev, [variantKey]: parseInt(e.target.value) || 0 }))}
+                                                        />
+                                                    </td>
+                                                    <td className='border border-gray-300 p-1'>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            placeholder={price || "499"}
+                                                            className='w-full px-2 py-1 text-sm border-0 focus:outline-none focus:ring-1 focus:ring-green-300'
+                                                            value={variantPrices[variantKey] || ''}
+                                                            onChange={(e) => setVariantPrices(prev => ({ ...prev, [variantKey]: parseInt(e.target.value) || 0 }))}
+                                                        />
+                                                    </td>
+                                                </React.Fragment>
                                             );
                                         })}
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
+                        <p className='text-xs text-gray-500 mt-2'>💡 Enter stock and price for each size+color combination. Leave price blank to use base price.</p>
                     </div>
                 ) : (
                     // Fallback for products without colors (backward compatibility)

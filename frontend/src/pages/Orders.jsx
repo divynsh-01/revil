@@ -19,17 +19,18 @@ const Orders = () => {
       }
 
       const response = await axios.post(backendUrl + '/api/order/userorders', {}, { headers: { token } })
-      if (response.data.success) {
+      if (response.data.success && Array.isArray(response.data.orders)) {
         let allOrdersItem = []
         response.data.orders.map((order) => {
           order.items.map((item) => {
-            item['orderStatus'] = order.orderStatus
-            item['payment'] = order.payment
-            item['pricing'] = order.pricing
-            item['tracking'] = order.tracking
-            item['orderId'] = order.orderId
-            item['date'] = order.createdAt
-            allOrdersItem.push(item)
+            const itemCopy = { ...item }; // Create copy to avoid mutation issues
+            itemCopy['orderStatus'] = order.orderStatus
+            itemCopy['payment'] = order.payment
+            itemCopy['pricing'] = order.pricing
+            itemCopy['tracking'] = order.tracking
+            itemCopy['orderId'] = order.orderId
+            itemCopy['date'] = order.createdAt
+            allOrdersItem.push(itemCopy)
           })
         })
         setOrderData(allOrdersItem.reverse())
