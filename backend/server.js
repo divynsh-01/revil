@@ -10,7 +10,6 @@ import orderRouter from './routes/orderRoute.js'
 import dashboardRouter from './routes/dashboardRoute.js'
 import addressRouter from './routes/addressRoute.js'
 import categoryRouter from './routes/categoryRoute.js'
-import subCategoryRouter from './routes/subCategoryRoute.js'
 import wishlistRouter from './routes/wishlistRoute.js'
 import couponRouter from './routes/couponRoute.js'
 import dns from "node:dns";
@@ -34,7 +33,6 @@ app.use('/api/order', orderRouter)
 app.use('/api/dashboard', dashboardRouter)
 app.use('/api/address', addressRouter)
 app.use('/api/category', categoryRouter)
-app.use('/api/subcategory', subCategoryRouter)
 app.use('/api/wishlist', wishlistRouter)
 app.use('/api/coupon', couponRouter)
 

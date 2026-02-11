@@ -7,7 +7,6 @@ const Categories = ({ token }) => {
     const [categories, setCategories] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
-    const [isIdManual, setIsIdManual] = useState(false);
 
     const [formData, setFormData] = useState({
         categoryId: '',
@@ -15,15 +14,6 @@ const Categories = ({ token }) => {
         image: '',
         isActive: true
     });
-
-    // Helper to generate slug
-    const generateSlug = (text) => {
-        return text
-            .toString()
-            .toLowerCase()
-            .trim()
-            .replace(/[\s\W-]+/g, '_'); // Replace spaces and non-word chars with underscores
-    };
 
     // Fetch categories
     const fetchCategories = async () => {
@@ -44,21 +34,10 @@ const Categories = ({ token }) => {
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
-
-        setFormData(prev => {
-            const newData = {
-                ...prev,
-                [name]: type === 'checkbox' ? checked : value
-            };
-
-            // Auto-generate ID from Name if not in edit mode and ID hasn't been manually set
-            if (name === 'name' && !editingId && !isIdManual) {
-                newData.categoryId = generateSlug(value);
-            }
-
-            return newData;
-        });
-
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
     };
 
     const handleSubmit = async (e) => {
@@ -131,7 +110,6 @@ const Categories = ({ token }) => {
             isActive: true
         });
         setEditingId(null);
-        setIsIdManual(false);
         setShowForm(false);
     };
 
@@ -153,30 +131,16 @@ const Categories = ({ token }) => {
 
                     <div className='grid grid-cols-1 gap-4'>
                         <div>
-                            <div className='flex justify-between items-center mb-2'>
-                                <label className='text-sm'>Category ID (e.g., "men", "women")</label>
-                                {!editingId && (
-                                    <div className='flex items-center gap-2'>
-                                        <input
-                                            type='checkbox'
-                                            id='manualId'
-                                            checked={isIdManual}
-                                            onChange={(e) => setIsIdManual(e.target.checked)}
-                                            className='cursor-pointer'
-                                        />
-                                        <label htmlFor='manualId' className='text-xs cursor-pointer text-gray-500'>Manual ID</label>
-                                    </div>
-                                )}
-                            </div>
+                            <label className='block mb-2 text-sm'>Category ID (e.g., "men", "women")</label>
                             <input
                                 type='text'
                                 name='categoryId'
                                 value={formData.categoryId}
                                 onChange={handleInputChange}
                                 placeholder='Category ID'
-                                className={`border px-3 py-2 w-full ${editingId || !isIdManual ? 'bg-gray-100 text-gray-500' : ''}`}
+                                className='border px-3 py-2 w-full'
                                 required
-                                disabled={editingId !== null || !isIdManual}
+                                disabled={editingId !== null}
                             />
                         </div>
 

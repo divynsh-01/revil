@@ -63,7 +63,6 @@ const addProduct = async (req, res) => {
         const colorsArray = colors ? JSON.parse(colors) : [];
         const stockData = stockByVariant ? JSON.parse(stockByVariant) : {};
         const priceData = variantPrices ? JSON.parse(variantPrices) : {};
-        const titleData = req.body.colorTitles ? JSON.parse(req.body.colorTitles) : {};
 
         // Create variants array
         const variants = [];
@@ -74,7 +73,6 @@ const addProduct = async (req, res) => {
                 const variantKey = `${size}-${color}`;
                 const variantStock = stockData[variantKey] || 0;
                 const variantPrice = priceData[variantKey] || Number(price);
-                const variantTitle = titleData[color] || title; // Use specific title or default to main title
 
                 // Update minPrice for basePrice
                 if (variantPrice < minPrice) {
@@ -96,7 +94,6 @@ const addProduct = async (req, res) => {
                     color,
                     price: variantPrice,
                     stock: variantStock,
-                    variantTitle,
                     images: variantImages
                 });
             }
@@ -166,11 +163,10 @@ const updateProduct = async (req, res) => {
         }
 
         // Handle image updates (only if new images are uploaded)
-        // Handle image updates (only if new images are uploaded)
-        const image1 = req.files.find(f => f.fieldname === 'image1')
-        const image2 = req.files.find(f => f.fieldname === 'image2')
-        const image3 = req.files.find(f => f.fieldname === 'image3')
-        const image4 = req.files.find(f => f.fieldname === 'image4')
+        const image1 = req.files.image1 && req.files.image1[0]
+        const image2 = req.files.image2 && req.files.image2[0]
+        const image3 = req.files.image3 && req.files.image3[0]
+        const image4 = req.files.image4 && req.files.image4[0]
 
         let imagesUrl = existingProduct.images;
 
@@ -193,74 +189,21 @@ const updateProduct = async (req, res) => {
             }
         }
 
-        const stockData = stockByVariant ? JSON.parse(stockByVariant) : {};
-        const priceData = req.body.variantPrices ? JSON.parse(req.body.variantPrices) : {};
-        const titleData = req.body.colorTitles ? JSON.parse(req.body.colorTitles) : {};
-
-        // Reconstruct variants
-        const sizesArray = JSON.parse(sizes);
-        const colorsArray = colors ? JSON.parse(colors) : [];
-        const variants = [];
-        let minPrice = Number(price) || Infinity;
-
-        for (const size of sizesArray) {
-            for (const color of colorsArray) {
-                const variantKey = `${size}-${color}`;
-                const variantStock = stockData[variantKey] || 0;
-                const variantPrice = priceData[variantKey] || Number(price);
-                const variantTitle = titleData[color] || title;
-
-                if (variantPrice < minPrice) {
-                    minPrice = variantPrice;
-                }
-
-                // Generate SKU (re-generating might change SKU if logic changed, but usually deterministic)
-                // For update, ideally we should preserve SKU if exists, but for now let's regenerate or find existing?
-                // Simpler to just regenerate based on formula.
-                const baseSKU = generateSKU(title, color, size);
-                // Note: ensureUniqueSKU might fail if SKU exists for *this* product. 
-                // But since we are updating, we haven't deleted the old variants yet. 
-                // However, mongo replace will happen on save. 
-                // Actually `ensureUniqueSKU` checks if SKU exists in DB. 
-                // If we are updating *this* product, the SKU already exists for *this* product.
-                // We should probably just use the baseSKU w/o ensureUnique check if we assume it's the same product?
-                // Or maybe existing logic in addProduct handles it?
-                // Let's stick to simple generation for now.
-
-                // Get variant-specific images
-                const variantImages = imagesUrl
-                    .filter(img => img.color === color || img.color === null)
-                    .map(({ url, order }) => ({ url, order }));
-
-                variants.push({
-                    sku: baseSKU, // Simplified for update to avoid collision issues with self
-                    size,
-                    color,
-                    price: variantPrice,
-                    stock: variantStock,
-                    variantTitle,
-                    images: variantImages
-                });
-            }
-        }
-
         const updateData = {
             title,
             name: title,
             description,
             category,
             price: Number(price),
-            basePrice: minPrice !== Infinity ? minPrice : Number(price),
             discountPrice: discountPrice ? Number(discountPrice) : null,
             subCategory,
             brand: brand || "",
             bestseller: bestseller === "true",
-            isActive: isActive === "true",
+            isActive: isActive === "true", // Note: Ensure frontend sends "true"/"false" similarly to add
             isFeatured: isFeatured === "true",
-            sizes: sizesArray,
-            colors: colorsArray,
-            variants: variants,
-            stockByVariant: stockData,
+            sizes: JSON.parse(sizes),
+            colors: colors ? JSON.parse(colors) : [],
+            stockByVariant: stockByVariant ? JSON.parse(stockByVariant) : {},
             images: imagesUrl,
             updatedAt: Date.now()
         }
