@@ -12,15 +12,20 @@ const Cart = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCartData = async () => {
-      setLoading(true);
-      const backendCart = await getBackendCartItems();
-      setCartData(backendCart);
+    if (token) {
+      const fetchCartData = async () => {
+        setLoading(true);
+        const backendCart = await getBackendCartItems();
+        setCartData(backendCart);
+        setLoading(false);
+      };
+      fetchCartData();
+    } else if (!localStorage.getItem('token')) {
+      // If no token and no token in local storage, stop loading (guest or logged out)
       setLoading(false);
-    };
-
-    fetchCartData();
-  }, []);
+      setCartData([]); // Clear cart data
+    }
+  }, [token]);
 
   if (loading) {
     return <div className='border-t pt-14 text-center'>Loading cart...</div>;
