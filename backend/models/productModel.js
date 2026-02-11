@@ -7,7 +7,6 @@ const variantSchema = new mongoose.Schema({
     color: { type: String, required: true },
     price: { type: Number, required: true },
     stock: { type: Number, required: true, default: 0 },
-    variantTitle: { type: String }, // NEW: Title specific to this variant (color)
     images: [
         {
             url: { type: String },

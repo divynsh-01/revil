@@ -313,8 +313,7 @@ const allOrders = async (req, res) => {
 
     try {
 
-        const orders = await orderModel.find({}).populate('userId', 'email').sort({ createdAt: -1 })
-
+        const orders = await orderModel.find({}).sort({ createdAt: -1 })
         res.json({ success: true, orders })
 
     } catch (error) {
@@ -394,14 +393,4 @@ const getOrder = async (req, res) => {
     }
 }
 
-const getStatuses = async (req, res) => {
-    try {
-        const { ORDER_STATUS_DETAILS } = await import('../config/orderStatus.js');
-        res.json({ success: true, statusList: ORDER_STATUS_DETAILS });
-    } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
-    }
-}
-
-export { verifyRazorpay, verifyStripe, placeOrder, placeOrderStripe, placeOrderRazorpay, allOrders, userOrders, updateStatus, updateTracking, getOrder, getStatuses }
+export { verifyRazorpay, verifyStripe, placeOrder, placeOrderStripe, placeOrderRazorpay, allOrders, userOrders, updateStatus, updateTracking, getOrder }
