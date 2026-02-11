@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { assets } from '../assets/assets'
 import axios from 'axios'
 import { backendUrl } from '../App'
@@ -14,9 +14,10 @@ const Add = ({ token }) => {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [discountPrice, setDiscountPrice] = useState("");
-  const [brand, setBrand] = useState("");
-  const [category, setCategory] = useState("Men");
-  const [subCategory, setSubCategory] = useState("Topwear");
+  const [brand, setBrand] = useState("Revi'L");
+  const [isBrandManual, setIsBrandManual] = useState(false); // NEW: Toggle for manual brand
+  const [category, setCategory] = useState("");
+  const [subCategory, setSubCategory] = useState("");
   const [bestseller, setBestseller] = useState(false);
   const [isFeatured, setIsFeatured] = useState(false);
   const [isActive, setIsActive] = useState(true);
@@ -24,6 +25,7 @@ const Add = ({ token }) => {
   const [colors, setColors] = useState([]);
   const [stockByVariant, setStockByVariant] = useState({});
   const [variantPrices, setVariantPrices] = useState({}); // NEW: Per-variant pricing
+  const [colorTitles, setColorTitles] = useState({}); // NEW: Title per color
 
   // Handle image upload for a specific color
   const handleColorImageUpload = (color, index, file) => {
@@ -46,6 +48,66 @@ const Add = ({ token }) => {
     });
   };
 
+  const [catList, setCatList] = useState([]);
+  const [subCatList, setSubCatList] = useState([]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get(backendUrl + '/api/category/list')
+      if (response.data.success) {
+        setCatList(response.data.categories)
+      } else {
+        toast.error(response.data.message)
+      }
+    } catch (error) {
+      console.log(error)
+      toast.error(error.message)
+    }
+  }
+
+  const fetchSubCategories = async (categoryId) => {
+    try {
+      const response = await axios.get(backendUrl + '/api/subcategory/active/' + categoryId)
+      if (response.data.success) {
+        setSubCatList(response.data.subCategories)
+      } else {
+        toast.error(response.data.message)
+      }
+    } catch (error) {
+      console.log(error)
+      toast.error(error.message)
+    }
+  }
+
+  useEffect(() => {
+    fetchCategories()
+  }, [])
+
+  useEffect(() => {
+    if (catList.length > 0) {
+      let selectedCat = catList.find(cat => cat.name === category)
+
+      // If current category ("Men" default) isn't in the list, default to the first one
+      if (!selectedCat) {
+        selectedCat = catList[0]
+        setCategory(selectedCat.name)
+      }
+
+      if (selectedCat) {
+        fetchSubCategories(selectedCat.categoryId)
+      }
+    }
+  }, [category, catList])
+
+
+  useEffect(() => {
+    if (subCatList.length > 0) {
+      setSubCategory(subCatList[0].name)
+    } else {
+      setSubCategory("") // Clear or keep previous? Better to clear if no subs
+    }
+  }, [subCatList])
+
   const onSubmitHandler = async (e) => {
     e.preventDefault();
 
@@ -67,17 +129,22 @@ const Add = ({ token }) => {
       formData.append("colors", JSON.stringify(colors))
       formData.append("stockByVariant", JSON.stringify(stockByVariant))
       formData.append("variantPrices", JSON.stringify(variantPrices)) // NEW: Send variant prices
+      formData.append("colorTitles", JSON.stringify(colorTitles)) // NEW: Send color titles
 
       // Handle image uploads
       if (colors.length > 0) {
         // Upload color-specific images
         let imageIndex = 0;
         colors.forEach(color => {
-          if (colorImages[color]) {
-            colorImages[color].forEach(img => {
+          const specificImages = colorImages[color] && colorImages[color].some(img => img) ? colorImages[color] : [];
+          // Use specific images if available, otherwise fallback to general images
+          const imagesToUpload = specificImages.length > 0 ? specificImages : generalImages;
+
+          if (imagesToUpload && imagesToUpload.length > 0) {
+            imagesToUpload.forEach(img => {
               if (img) {
-                formData.append(`image${imageIndex}`, img);
                 formData.append(`imageColor${imageIndex}`, color);
+                formData.append(`image${imageIndex}`, img);
                 imageIndex++;
               }
             });
@@ -87,8 +154,8 @@ const Add = ({ token }) => {
         // Upload general images (no color association)
         generalImages.forEach((img, index) => {
           if (img) {
-            formData.append(`image${index}`, img);
             formData.append(`imageColor${index}`, ""); // Empty string for no color
+            formData.append(`image${index}`, img);
           }
         });
       }
@@ -99,7 +166,8 @@ const Add = ({ token }) => {
         toast.success(response.data.message)
         setTitle('')
         setDescription('')
-        setBrand('')
+        setBrand('Revi\'L')
+        setIsBrandManual(false)
         setPrice('')
         setDiscountPrice('')
         setSizes([])
@@ -187,8 +255,31 @@ const Add = ({ token }) => {
       </div>
 
       <div className='w-full'>
-        <p className='mb-2'>Brand Name</p>
-        <input onChange={(e) => setBrand(e.target.value)} value={brand} className='w-full max-w-[500px] px-3 py-2' type="text" placeholder='Enter brand name' />
+        <div className='flex justify-between items-center mb-2 max-w-[500px]'>
+          <p>Brand Name</p>
+          <div className='flex items-center gap-2'>
+            <input
+              type="checkbox"
+              id="manualBrand"
+              checked={isBrandManual}
+              onChange={() => {
+                setIsBrandManual(prev => {
+                  if (prev) setBrand("Revi'L"); // Reset if unchecking
+                  return !prev;
+                });
+              }}
+            />
+            <label htmlFor="manualBrand" className='text-sm text-gray-600 cursor-pointer'>Manual Brand Name</label>
+          </div>
+        </div>
+        <input
+          onChange={(e) => setBrand(e.target.value)}
+          value={brand}
+          className={`w-full max-w-[500px] px-3 py-2 ${!isBrandManual ? 'bg-gray-100 text-gray-500' : ''}`}
+          type="text"
+          placeholder='Enter brand name'
+          disabled={!isBrandManual}
+        />
       </div>
 
 
@@ -197,18 +288,18 @@ const Add = ({ token }) => {
         <div className='flex-1'>
           <p className='mb-2'>Product category</p>
           <select onChange={(e) => setCategory(e.target.value)} className='w-full px-3 py-2'>
-            <option value="Men">Men</option>
-            <option value="Women">Women</option>
-            <option value="Kids">Kids</option>
+            {catList.map((item) => (
+              <option key={item._id} value={item.name}>{item.name}</option>
+            ))}
           </select>
         </div>
 
         <div className='flex-1'>
           <p className='mb-2'>Sub category</p>
-          <select onChange={(e) => setSubCategory(e.target.value)} className='w-full px-3 py-2'>
-            <option value="Topwear">Topwear</option>
-            <option value="Bottomwear">Bottomwear</option>
-            <option value="Winterwear">Winterwear</option>
+          <select onChange={(e) => setSubCategory(e.target.value)} value={subCategory} className='w-full px-3 py-2'>
+            {subCatList.map((item) => (
+              <option key={item._id} value={item.name}>{item.name}</option>
+            ))}
           </select>
         </div>
 
@@ -252,13 +343,31 @@ const Add = ({ token }) => {
 
       <div>
         <p className='mb-2'>Available Colors</p>
-        <div className='flex gap-3 flex-wrap'>
+        <div className='flex gap-3 flex-wrap mb-4'>
           {["Black", "White", "Red", "Blue", "Green", "Yellow", "Pink", "Gray", "Navy", "Beige"].map((color) => (
             <div key={color} onClick={() => setColors(prev => prev.includes(color) ? prev.filter(item => item !== color) : [...prev, color])}>
               <p className={`${colors.includes(color) ? "bg-pink-100" : "bg-slate-200"} px-3 py-1 cursor-pointer text-sm`}>{color}</p>
             </div>
           ))}
         </div>
+
+        {colors.length > 0 && (
+          <div className='flex flex-col gap-3 mt-2'>
+            <p className='text-sm font-medium'>Color-wise Titles (Optional)</p>
+            {colors.map(color => (
+              <div key={color} className='flex items-center gap-3'>
+                <span className='w-16 text-sm'>{color}:</span>
+                <input
+                  type="text"
+                  placeholder={`Title for ${color} variant`}
+                  className='border px-3 py-1 w-full max-w-[400px] text-sm'
+                  value={colorTitles[color] || ""}
+                  onChange={(e) => setColorTitles(prev => ({ ...prev, [color]: e.target.value }))}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className='w-full'>

@@ -57,12 +57,17 @@ const updateCart = async (req, res) => {
         let itemImage = product.images?.[0]?.url || product.images?.[0] || product.image?.[0] || "";
 
         // If variantId provided, get variant data
+        let itemTitle = product.title || product.name;
+
         if (variantId && product.variants && product.variants.length > 0) {
             const variant = product.variants.id(variantId);
             if (variant) {
                 itemSize = variant.size;
                 itemColor = variant.color;
                 itemPrice = variant.price;
+                if (variant.variantTitle) {
+                    itemTitle = variant.variantTitle;
+                }
                 // Get variant-specific image
                 if (variant.images && variant.images.length > 0) {
                     itemImage = variant.images[0].url;
@@ -90,7 +95,7 @@ const updateCart = async (req, res) => {
             const cartItem = {
                 productId: itemId,
                 variantId: variantId || null,
-                title: product.title || product.name,
+                title: itemTitle,
                 price: itemPrice,
                 image: itemImage,
                 size: itemSize,
@@ -199,10 +204,22 @@ const addToCart = async (req, res) => {
                 }
             }
 
+            // Try to get variant-specific content
+            let itemTitle = productData.title || productData.name || "Unknown Product";
+
+            if (variantId && productData.variants && productData.variants.length > 0) {
+                const variant = productData.variants.id(variantId);
+                if (variant) {
+                    if (variant.variantTitle) {
+                        itemTitle = variant.variantTitle;
+                    }
+                }
+            }
+
             cart.items.push({
                 productId,
                 variantId: itemVariantId || null,
-                title: productData.title || productData.name || "Unknown Product",
+                title: itemTitle,
                 price: itemPrice,
                 image: image,
                 size: itemSize,
