@@ -441,7 +441,15 @@ const Collection = () => {
           <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 gap-y-6'>
             {filterProducts.length > 0 ? (
               filterProducts.map((item, index) => (
-                <ProductItem key={index} name={item.title || item.name} id={item._id} price={item.discountPrice || item.price} image={item.images || item.image} />
+                <ProductItem
+                  key={index}
+                  name={item.title || item.name}
+                  id={item._id}
+                  price={item.discountPrice || item.price}
+                  image={item.images || item.image}
+                  selectedColor={colors.length === 1 ? colors[0] : null} // Pass selected color if only one is selected
+                  variants={item.variants}
+                />
               ))
             ) : (
               <div className='col-span-full text-center py-20'>

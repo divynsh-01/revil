@@ -8,6 +8,7 @@ const variantSchema = new mongoose.Schema({
     price: { type: Number, required: true },
     stock: { type: Number, required: true, default: 0 },
     variantTitle: { type: String }, // NEW: Title specific to this variant (color)
+    isListingVariant: { type: Boolean, default: false }, // NEW: If true, this variant's image is used for the main listing
     images: [
         {
             url: { type: String },

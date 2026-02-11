@@ -64,6 +64,7 @@ const addProduct = async (req, res) => {
         const stockData = stockByVariant ? JSON.parse(stockByVariant) : {};
         const priceData = variantPrices ? JSON.parse(variantPrices) : {};
         const titleData = req.body.colorTitles ? JSON.parse(req.body.colorTitles) : {};
+        const defaultColor = req.body.defaultListingColor || null; // NEW: Color to be used for main listing
 
         // Create variants array
         const variants = [];
@@ -97,6 +98,7 @@ const addProduct = async (req, res) => {
                     price: variantPrice,
                     stock: variantStock,
                     variantTitle,
+                    isListingVariant: color === defaultColor, // NEW: Set flag if matches default color
                     images: variantImages
                 });
             }
@@ -165,37 +167,47 @@ const updateProduct = async (req, res) => {
             return res.json({ success: false, message: "Product not found" });
         }
 
-        // Handle image updates (only if new images are uploaded)
-        // Handle image updates (only if new images are uploaded)
-        const image1 = req.files.find(f => f.fieldname === 'image1')
-        const image2 = req.files.find(f => f.fieldname === 'image2')
-        const image3 = req.files.find(f => f.fieldname === 'image3')
-        const image4 = req.files.find(f => f.fieldname === 'image4')
+        // Handle dynamic image uploads with color metadata
+        // With upload.any(), req.files is an array of file objects
+        const uploadedImages = [];
 
-        let imagesUrl = existingProduct.images;
+        if (req.files && req.files.length > 0) {
+            req.files.forEach((file) => {
+                // file.fieldname will be like 'image0', 'image1', etc.
+                if (file.fieldname.startsWith('image')) {
+                    const imageIndex = file.fieldname.replace('image', '');
+                    const colorKey = `imageColor${imageIndex}`;
+                    const imageColor = req.body[colorKey] || null;
 
-        if (image1 || image2 || image3 || image4) {
-            const images = [image1, image2, image3, image4].filter((item) => item !== undefined)
+                    uploadedImages.push({
+                        file: file,
+                        color: imageColor === "" ? null : imageColor
+                    });
+                }
+            });
+        }
 
-            // If new images provided, upload them
-            // Note: Currently replacing all images if any new one is uploaded for simplicity
-            // A granular update would require more complex logic
-            if (images.length > 0) {
-                imagesUrl = await Promise.all(
-                    images.map(async (item, index) => {
-                        let result = await cloudinary.uploader.upload(item.path, { resource_type: 'image' });
-                        return {
-                            url: result.secure_url,
-                            order: index + 1
-                        }
-                    })
-                )
-            }
+        let imagesUrl = existingProduct.images || [];
+
+        // Upload new images and append to existing
+        if (uploadedImages.length > 0) {
+            const newImages = await Promise.all(
+                uploadedImages.map(async (item, index) => {
+                    let result = await cloudinary.uploader.upload(item.file.path, { resource_type: 'image' });
+                    return {
+                        url: result.secure_url,
+                        order: (imagesUrl.length || 0) + index + 1, // Append order
+                        color: item.color
+                    }
+                })
+            )
+            imagesUrl = [...imagesUrl, ...newImages];
         }
 
         const stockData = stockByVariant ? JSON.parse(stockByVariant) : {};
         const priceData = req.body.variantPrices ? JSON.parse(req.body.variantPrices) : {};
         const titleData = req.body.colorTitles ? JSON.parse(req.body.colorTitles) : {};
+        const defaultColor = req.body.defaultListingColor || null; // NEW: default listing color
 
         // Reconstruct variants
         const sizesArray = JSON.parse(sizes);
@@ -214,18 +226,8 @@ const updateProduct = async (req, res) => {
                     minPrice = variantPrice;
                 }
 
-                // Generate SKU (re-generating might change SKU if logic changed, but usually deterministic)
-                // For update, ideally we should preserve SKU if exists, but for now let's regenerate or find existing?
-                // Simpler to just regenerate based on formula.
+                // Generate SKU
                 const baseSKU = generateSKU(title, color, size);
-                // Note: ensureUniqueSKU might fail if SKU exists for *this* product. 
-                // But since we are updating, we haven't deleted the old variants yet. 
-                // However, mongo replace will happen on save. 
-                // Actually `ensureUniqueSKU` checks if SKU exists in DB. 
-                // If we are updating *this* product, the SKU already exists for *this* product.
-                // We should probably just use the baseSKU w/o ensureUnique check if we assume it's the same product?
-                // Or maybe existing logic in addProduct handles it?
-                // Let's stick to simple generation for now.
 
                 // Get variant-specific images
                 const variantImages = imagesUrl
@@ -233,12 +235,13 @@ const updateProduct = async (req, res) => {
                     .map(({ url, order }) => ({ url, order }));
 
                 variants.push({
-                    sku: baseSKU, // Simplified for update to avoid collision issues with self
+                    sku: baseSKU,
                     size,
                     color,
                     price: variantPrice,
                     stock: variantStock,
                     variantTitle,
+                    isListingVariant: color === defaultColor, // NEW: Set flag
                     images: variantImages
                 });
             }

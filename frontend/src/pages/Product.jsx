@@ -27,11 +27,27 @@ const Product = () => {
     products.map((item) => {
       if (item._id === productId) {
         setProductData(item)
-        // Handle both old (array of strings) and new (array of objects) image formats
-        const firstImage = item.images && item.images.length > 0
+
+        let initialImage = item.images && item.images.length > 0
           ? (typeof item.images[0] === 'string' ? item.images[0] : item.images[0].url)
           : (item.image && item.image[0] ? item.image[0] : '');
-        setImage(firstImage)
+
+        // Check for listing variant (Admin default) to auto-select color
+        if (item.variants && item.variants.length > 0) {
+          const listingVariant = item.variants.find(v => v.isListingVariant);
+          if (listingVariant) {
+            setColor(listingVariant.color);
+            // Also update initial image to match this color immediately to prevent flash
+            if (item.images) {
+              const variantImage = item.images.find(img => img.color === listingVariant.color);
+              if (variantImage) {
+                initialImage = variantImage.url;
+              }
+            }
+          }
+        }
+
+        setImage(initialImage)
 
         // Set initial price
         const initialPrice = item.basePrice || item.discountPrice || item.price || 0;
@@ -73,26 +89,41 @@ const Product = () => {
 
   // NEW: Update selected variant and price when size/color changes
   useEffect(() => {
-    if (productData && size && color) {
-      // Check if product has variants array (new model)
-      if (productData.variants && productData.variants.length > 0) {
-        const variant = productData.variants.find(v =>
-          v.size === size && v.color === color
-        );
+    if (productData) {
+      if (size && color) {
+        // Case 1: Both Size and Color selected -> Exact Variant
+        if (productData.variants && productData.variants.length > 0) {
+          const variant = productData.variants.find(v =>
+            v.size === size && v.color === color
+          );
 
-        if (variant) {
-          setSelectedVariant(variant);
-          setDisplayPrice(variant.price);
+          if (variant) {
+            setSelectedVariant(variant);
+            setDisplayPrice(variant.price);
+          }
+        } else {
+          // Backward compatibility
+          setSelectedVariant(null);
+          setDisplayPrice(productData.discountPrice || productData.price || 0);
+        }
+      } else if (color) {
+        // Case 2: Only Color selected -> Show Min Price for this Color
+        if (productData.variants && productData.variants.length > 0) {
+          const colorVariants = productData.variants.filter(v => v.color === color);
+          if (colorVariants.length > 0) {
+            // Find minimum price among variants of this color
+            const minColorPrice = Math.min(...colorVariants.map(v => v.price));
+            setDisplayPrice(minColorPrice);
+            setSelectedVariant(null); // No specific variant selected yet (needs size)
+          }
+        } else {
+          setDisplayPrice(productData.discountPrice || productData.price || 0);
         }
       } else {
-        // Fallback to old model (backward compatibility)
+        // Case 3: Nothing selected -> Show Base Price
         setSelectedVariant(null);
-        setDisplayPrice(productData.discountPrice || productData.price || 0);
+        setDisplayPrice(productData.basePrice || productData.discountPrice || productData.price || 0);
       }
-    } else if (productData) {
-      // No variant selected, show base price
-      setSelectedVariant(null);
-      setDisplayPrice(productData.basePrice || productData.discountPrice || productData.price || 0);
     }
   }, [size, color, productData])
 

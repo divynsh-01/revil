@@ -2,13 +2,30 @@ import React, { useContext } from 'react'
 import { ShopContext } from '../context/ShopContext'
 import { Link } from 'react-router-dom'
 
-const ProductItem = ({ id, image, name, price }) => {
+const ProductItem = ({ id, image, name, price, selectedColor, variants }) => {
 
   const { currency, wishlist, addToWishlist, removeFromWishlist } = useContext(ShopContext);
 
   // Handle both old (array of strings) and new (array of objects) image formats
   const getImageUrl = () => {
     if (!image || !image[0]) return '';
+
+    // 1. If user explicitly selected a color, prioritize that
+    if (selectedColor && typeof image[0] !== 'string') {
+      const colorImage = image.find(img => img.color === selectedColor);
+      if (colorImage) return colorImage.url;
+    }
+
+    // 2. If no explicit selection, check for "Listing Variant" (Admin default)
+    if (!selectedColor && variants && variants.length > 0 && typeof image[0] !== 'string') {
+      const listingVariant = variants.find(v => v.isListingVariant);
+      if (listingVariant) {
+        const variantImage = image.find(img => img.color === listingVariant.color);
+        if (variantImage) return variantImage.url;
+      }
+    }
+
+    // 3. Fallback to first image
     return typeof image[0] === 'string' ? image[0] : image[0].url;
   };
 
