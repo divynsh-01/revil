@@ -34,6 +34,7 @@ const ProductForm = ({ token, initialData, isEdit }) => {
 
     const [catList, setCatList] = useState([]);
     const [subCatList, setSubCatList] = useState([]);
+    const [availableColors, setAvailableColors] = useState([]);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -128,8 +129,23 @@ const ProductForm = ({ token, initialData, isEdit }) => {
         }
     }
 
+    const fetchColors = async () => {
+        try {
+            const response = await axios.get(backendUrl + '/api/color/list')
+            if (response.data.success) {
+                setAvailableColors(response.data.colors)
+            } else {
+                toast.error(response.data.message)
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error(error.message)
+        }
+    }
+
     useEffect(() => {
         fetchCategories()
+        fetchColors()
     }, [])
 
     useEffect(() => {
@@ -412,9 +428,12 @@ const ProductForm = ({ token, initialData, isEdit }) => {
             <div>
                 <p className='mb-2'>Available Colors</p>
                 <div className='flex gap-3 flex-wrap mb-4'>
-                    {["Black", "White", "Red", "Blue", "Green", "Yellow", "Pink", "Gray", "Navy", "Beige"].map((color) => (
-                        <div key={color} onClick={() => setColors(prev => prev.includes(color) ? prev.filter(item => item !== color) : [...prev, color])}>
-                            <p className={`${colors.includes(color) ? "bg-pink-100" : "bg-slate-200"} px-3 py-1 cursor-pointer text-sm`}>{color}</p>
+                    {availableColors.map((item) => (
+                        <div key={item._id} onClick={() => setColors(prev => prev.includes(item.name) ? prev.filter(c => c !== item.name) : [...prev, item.name])}>
+                            <p className={`${colors.includes(item.name) ? "bg-pink-100" : "bg-slate-200"} px-3 py-1 cursor-pointer text-sm flex items-center gap-2`}>
+                                {item.hexCode && <span className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: item.hexCode }}></span>}
+                                {item.name}
+                            </p>
                         </div>
                     ))}
                 </div>

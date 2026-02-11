@@ -7,6 +7,7 @@ import List from './pages/List'
 import Orders from './pages/Orders'
 import Categories from './pages/Categories'
 import SubCategories from './pages/SubCategories'
+import Colors from './pages/Colors'
 import Coupons from './pages/Coupons'
 import Users from './pages/Users'
 import Edit from './pages/Edit'
@@ -45,6 +46,7 @@ const App = () => {
                 <Route path='/orders' element={<Orders token={token} />} />
                 <Route path='/categories' element={<Categories token={token} />} />
                 <Route path='/sub-categories' element={<SubCategories token={token} />} />
+                <Route path='/colors' element={<Colors token={token} />} />
                 <Route path='/coupons' element={<Coupons token={token} />} />
                 <Route path='/users' element={<Users token={token} />} />
               </Routes>

@@ -13,6 +13,7 @@ import categoryRouter from './routes/categoryRoute.js'
 import subCategoryRouter from './routes/subCategoryRoute.js'
 import wishlistRouter from './routes/wishlistRoute.js'
 import couponRouter from './routes/couponRoute.js'
+import colorRouter from './routes/colorRoute.js'
 import dns from "node:dns";
 dns.setServers(["1.1.1.1", "8.8.8.8"]); // Cloudflare + Google DNS
 
@@ -37,6 +38,7 @@ app.use('/api/category', categoryRouter)
 app.use('/api/subcategory', subCategoryRouter)
 app.use('/api/wishlist', wishlistRouter)
 app.use('/api/coupon', couponRouter)
+app.use('/api/color', colorRouter)
 
 app.get('/', (req, res) => {
     res.send("API Working")
