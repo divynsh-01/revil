@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { ShopContext } from '../context/ShopContext';
 import Title from '../components/Title';
+import Loader from '../components/Loader';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
@@ -126,9 +127,7 @@ const Profile = () => {
     }, [token]);
 
     if (!userData) {
-        return <div className='border-t pt-16 min-h-screen flex items-center justify-center'>
-            <p className='text-neutral-500'>Loading...</p>
-        </div>;
+        return <Loader />;
     }
 
     return (
