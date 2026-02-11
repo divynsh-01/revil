@@ -3,6 +3,7 @@ import { ShopContext } from '../context/ShopContext'
 import Title from '../components/Title';
 import { assets } from '../assets/assets';
 import CartTotal from '../components/CartTotal';
+import Loader from '../components/Loader';
 
 const Cart = () => {
 
@@ -28,7 +29,7 @@ const Cart = () => {
   }, [token]);
 
   if (loading) {
-    return <div className='border-t pt-14 text-center'>Loading cart...</div>;
+    return <Loader />;
   }
 
   return (
