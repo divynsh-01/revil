@@ -15,7 +15,42 @@ const getCart = async (req, res) => {
 
         // Convert cart items array to frontend format (nested object) for backward compatibility
         const cartData = {};
-        cart.items.forEach(item => {
+
+        // Enrich cart items with current stock info
+        const enrichedItems = [];
+
+        for (const item of cart.items) {
+            const product = await productModel.findById(item.productId);
+            let currentStock = 0;
+
+            if (product) {
+                if (item.variantId) {
+                    const variant = product.variants.id(item.variantId);
+                    currentStock = variant ? variant.stock : 0;
+                } else {
+                    // For old model or simple products, we might not have precise stock tracking, 
+                    // but let's try to infer or default to a safe number if not tracked strictly.
+                    // If the product has no variants, maybe check specific size logic if implemented, 
+                    // otherwise default to arbitrary high number or 0 if strict.
+                    // For now, let's assume if no variantId, we check if it's a simple product.
+                    // If the product schema has a top-level stock (not shown in previous view_file), use it.
+                    // Based on view_file, productModel has `stock` inside variants. 
+                    // Old `stockByVariant` is map.
+                    if (product.stockByVariant && product.stockByVariant.get(item.size)) {
+                        currentStock = product.stockByVariant.get(item.size);
+                    } else {
+                        // Fallback: if we can't determine stock, allow it (or set to 0 to disable?)
+                        // Let's allow it for now to avoid breaking old items, but max 100
+                        currentStock = 100;
+                    }
+                }
+            }
+
+            // Add stock to the item object for frontend
+            const itemObj = item.toObject();
+            itemObj.stock = currentStock;
+            enrichedItems.push(itemObj);
+
             const productId = item.productId.toString();
             if (!cartData[productId]) {
                 cartData[productId] = {};
@@ -23,10 +58,14 @@ const getCart = async (req, res) => {
             // Use variantId or size-color key
             const key = item.variantId ? item.variantId.toString() : (item.color ? `${item.size}-${item.color}` : item.size);
             cartData[productId][key] = item.quantity;
-        });
+        }
 
-        // Return both cartData (for compatibility) and cart object (for Cart.jsx)
-        res.json({ success: true, cartData, cart });
+        // Return both cartData (for compatibility) and cart object with enriched items (for Cart.jsx)
+        // We replace items with enrichedItems in the response
+        const cartResponse = cart.toObject();
+        cartResponse.items = enrichedItems;
+
+        res.json({ success: true, cartData, cart: cartResponse });
 
     } catch (error) {
         console.log(error);
@@ -55,6 +94,7 @@ const updateCart = async (req, res) => {
         let itemColor = color;
         let itemPrice = product.discountPrice || product.price;
         let itemImage = product.images?.[0]?.url || product.images?.[0] || product.image?.[0] || "";
+        let availableStock = 0;
 
         // If variantId provided, get variant data
         if (variantId && product.variants && product.variants.length > 0) {
@@ -63,11 +103,20 @@ const updateCart = async (req, res) => {
                 itemSize = variant.size;
                 itemColor = variant.color;
                 itemPrice = variant.price;
+                availableStock = variant.stock;
                 // Get variant-specific image
                 if (variant.images && variant.images.length > 0) {
                     itemImage = variant.images[0].url;
                 }
             }
+        } else {
+            // Fallback logic for stock if no variantId (simplified)
+            availableStock = 100;
+        }
+
+        // Validate Quantity
+        if (quantity > availableStock) {
+            return res.json({ success: false, message: `Only ${availableStock} items in stock` });
         }
 
         // Find existing item (match by variantId OR size+color)
