@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { ORDER_STATUS } from '../config/orderStatus.js'
 
 const orderItemSchema = new mongoose.Schema({
     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'product' },
@@ -45,12 +46,14 @@ const orderSchema = new mongoose.Schema({
         pincode: { type: String, required: true }
     },
 
+    // ... (previous code)
+
     // Order status workflow
     orderStatus: {
         type: String,
         required: true,
-        default: 'Order Placed',
-        enum: ['Order Placed', 'Packing', 'Shipped', 'Out for delivery', 'Delivered', 'Cancelled']
+        default: ORDER_STATUS.ORDER_PLACED,
+        enum: Object.values(ORDER_STATUS)
     },
 
     // Tracking information

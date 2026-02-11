@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react'
+import axios from 'axios';
 import { ShopContext } from '../context/ShopContext'
 import { assets } from '../assets/assets';
 import Title from '../components/Title';
@@ -7,7 +8,7 @@ import Loader from '../components/Loader';
 
 const Collection = () => {
 
-  const { products, search, showSearch, loading } = useContext(ShopContext);
+  const { products, search, showSearch, loading, backendUrl } = useContext(ShopContext);
   const [showFilter, setShowFilter] = useState(false);
   const [filterProducts, setFilterProducts] = useState([]);
 
@@ -18,7 +19,27 @@ const Collection = () => {
   const [colors, setColors] = useState([]);
   const [priceRange, setPriceRange] = useState({ min: 0, max: 10000 });
 
+  // Dynamic Filter Data
+  const [categoryList, setCategoryList] = useState([]);
+  const [subCategoryList, setSubCategoryList] = useState([]);
+
   const [sortType, setSortType] = useState('relevance');
+
+  // Fetch Filter Data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const catRes = await axios.get(backendUrl + '/api/category/list');
+        if (catRes.data.success) setCategoryList(catRes.data.categories);
+
+        const subCatRes = await axios.get(backendUrl + '/api/subcategory/list');
+        if (subCatRes.data.success) setSubCategoryList(subCatRes.data.subCategories);
+      } catch (error) {
+        console.error("Error fetching filters", error);
+      }
+    };
+    fetchData();
+  }, [backendUrl]);
 
   // Available filter options
   const availableSizes = ['S', 'M', 'L', 'XL', 'XXL'];
@@ -230,15 +251,11 @@ const Collection = () => {
           <div className='border border-gray-300 pl-5 py-3 mt-6 sm:mt-6'>
             <p className='mb-3 text-sm font-medium'>CATEGORIES</p>
             <div className='flex flex-col gap-2 text-sm font-light text-gray-700'>
-              <p className='flex gap-2'>
-                <input className='w-3' type="checkbox" value={'Men'} onChange={toggleCategory} checked={category.includes('Men')} /> Men
-              </p>
-              <p className='flex gap-2'>
-                <input className='w-3' type="checkbox" value={'Women'} onChange={toggleCategory} checked={category.includes('Women')} /> Women
-              </p>
-              <p className='flex gap-2'>
-                <input className='w-3' type="checkbox" value={'Kids'} onChange={toggleCategory} checked={category.includes('Kids')} /> Kids
-              </p>
+              {categoryList.map((item) => (
+                <p key={item._id} className='flex gap-2'>
+                  <input className='w-3' type="checkbox" value={item.name} onChange={toggleCategory} checked={category.includes(item.name)} /> {item.name}
+                </p>
+              ))}
             </div>
           </div>
 
@@ -246,15 +263,11 @@ const Collection = () => {
           <div className='border border-gray-300 pl-5 py-3 my-5'>
             <p className='mb-3 text-sm font-medium'>TYPE</p>
             <div className='flex flex-col gap-2 text-sm font-light text-gray-700'>
-              <p className='flex gap-2'>
-                <input className='w-3' type="checkbox" value={'Topwear'} onChange={toggleSubCategory} checked={subCategory.includes('Topwear')} /> Topwear
-              </p>
-              <p className='flex gap-2'>
-                <input className='w-3' type="checkbox" value={'Bottomwear'} onChange={toggleSubCategory} checked={subCategory.includes('Bottomwear')} /> Bottomwear
-              </p>
-              <p className='flex gap-2'>
-                <input className='w-3' type="checkbox" value={'Winterwear'} onChange={toggleSubCategory} checked={subCategory.includes('Winterwear')} /> Winterwear
-              </p>
+              {subCategoryList.map((item) => (
+                <p key={item._id} className='flex gap-2'>
+                  <input className='w-3' type="checkbox" value={item.name} onChange={toggleSubCategory} checked={subCategory.includes(item.name)} /> {item.name}
+                </p>
+              ))}
             </div>
           </div>
 
