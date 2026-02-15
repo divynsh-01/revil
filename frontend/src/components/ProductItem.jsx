@@ -78,6 +78,58 @@ const ProductItem = ({ id, image, name, price, selectedColor, variants }) => {
           <p className='text-base font-semibold text-black'>
             {currency}{price}
           </p>
+
+          {/* Color Swatches */}
+          {variants && variants.length > 0 && (
+            <div className='flex gap-1.5 mt-2'>
+              {/* Extract unique colors from variants */}
+              {[...new Set(variants.map(v => v.color))].slice(0, 5).map((color, index) => {
+                // Map color names to actual CSS colors
+                const getColorClass = (colorName) => {
+                  const colorMap = {
+                    'White': '#FFFFFF',
+                    'Black': '#000000',
+                    'Red': '#EF4444',
+                    'Blue': '#3B82F6',
+                    'Navy': '#1E3A8A',
+                    'Green': '#10B981',
+                    'Yellow': '#EAB308',
+                    'Orange': '#F97316',
+                    'Pink': '#EC4899',
+                    'Purple': '#A855F7',
+                    'Gray': '#6B7280',
+                    'Grey': '#6B7280',
+                    'Brown': '#92400E',
+                    'Beige': '#D4A574',
+                    'Maroon': '#7F1D1D',
+                    'Light Blue': '#7DD3FC',
+                    'Dark Blue': '#1E40AF',
+                    'Olive': '#84CC16',
+                    'Cream': '#FEF3C7',
+                  };
+                  return colorMap[colorName] || '#9CA3AF'; // Default to gray if color not found
+                };
+
+                const colorHex = getColorClass(color);
+                const isWhite = color.toLowerCase().includes('white') || color.toLowerCase().includes('cream');
+
+                return (
+                  <div
+                    key={index}
+                    className={`w-5 h-5 rounded-full ${isWhite ? 'border border-gray-300' : ''}`}
+                    style={{ backgroundColor: colorHex }}
+                    title={color}
+                  />
+                );
+              })}
+              {/* Show "+X" if more than 5 colors */}
+              {[...new Set(variants.map(v => v.color))].length > 5 && (
+                <div className='text-xs text-gray-500 flex items-center ml-0.5'>
+                  +{[...new Set(variants.map(v => v.color))].length - 5}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </Link>
     </div>

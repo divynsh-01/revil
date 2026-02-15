@@ -56,6 +56,7 @@ const Wishlist = () => {
                                     image={item.images}
                                     name={item.title || item.name}
                                     price={item.discountPrice || item.price}
+                                    variants={item.variants}
                                 />
                                 <div className='flex gap-2 mt-2'>
                                     <button
