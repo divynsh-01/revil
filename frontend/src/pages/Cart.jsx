@@ -50,7 +50,7 @@ const Cart = () => {
               const isDeleting = loading === item.productId + (item.variantId || item.size); // Use loading state for specific item deletion if needed, but better to use a unique ID
 
               return (
-                <div key={index} className='py-4 border-t border-b text-gray-700 grid grid-cols-[4fr_0.5fr_0.5fr] sm:grid-cols-[4fr_2fr_0.5fr] items-center gap-4'>
+                <div key={index} className='py-4 border-t border-b text-gray-700 grid grid-cols-[4fr_1fr] sm:grid-cols-[4fr_2fr_0.5fr] items-center gap-4'>
                   <div className=' flex items-start gap-6'>
                     <img className='w-16 sm:w-20' src={item.image || ''} alt="" />
                     <div>
@@ -66,91 +66,101 @@ const Cart = () => {
                     </div>
                   </div>
 
-                  <div className='flex flex-col gap-1 items-start'>
-                    <div className='flex items-center border border-gray-300 rounded-md overflow-hidden h-8 sm:h-10'>
-                      <button
-                        onClick={() => {
-                          const newQty = item.quantity - 1;
-                          if (newQty < 1) return;
-                          const key = item.variantId || (item.color ? `${item.size}-${item.color}` : item.size);
-                          // Optimistic update
-                          const updatedCartData = cartData.map(cartItem => {
-                            const isSameItem = cartItem.productId === item.productId &&
-                              cartItem.variantId === item.variantId &&
-                              cartItem.size === item.size &&
-                              cartItem.color === item.color;
-                            if (isSameItem) {
-                              return { ...cartItem, quantity: newQty };
+                  <div className='flex flex-col gap-2 items-center sm:flex-row sm:items-center sm:col-span-2'>
+                    <div className='flex justify-center sm:justify-end sm:flex-1 sm:order-2'>
+                      {actionLoading === (item.productId + (item.variantId || (item.color ? `${item.size}-${item.color}` : item.size))) ? (
+                        <div className='w-4 h-4 sm:w-5 sm:h-5 border-2 border-gray-300 border-t-black rounded-full animate-spin'></div>
+                      ) : (
+                        <img
+                          onClick={async () => {
+                            const key = item.variantId || (item.color ? `${item.size}-${item.color}` : item.size);
+                            const uniqueId = item.productId + key;
+                            // Set specific loading state for this item
+                            setActionLoading(uniqueId);
+                            await updateQuantity(item.productId.toString(), key, 0);
+                            // Refresh local cart display
+                            const refreshedCart = await getBackendCartItems();
+                            setCartData(refreshedCart);
+                            // Refresh global cart state so CartTotal updates
+                            if (token) {
+                              await getUserCart(token);
                             }
-                            return cartItem;
-                          });
-                          setCartData(updatedCartData);
-                          updateQuantity(item.productId.toString(), key, newQty);
-                        }}
-                        className='px-3 h-full bg-gray-50 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-gray-600'
-                        disabled={item.quantity <= 1}
-                      >-</button>
-
-                      <div className='w-10 sm:w-16 h-full flex items-center justify-center font-medium text-gray-700 text-sm border-x border-gray-200 bg-white'>
-                        {item.quantity}
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          const newQty = item.quantity + 1;
-                          if (newQty > currentStock) return;
-                          const key = item.variantId || (item.color ? `${item.size}-${item.color}` : item.size);
-                          // Optimistic update
-                          const updatedCartData = cartData.map(cartItem => {
-                            const isSameItem = cartItem.productId === item.productId &&
-                              cartItem.variantId === item.variantId &&
-                              cartItem.size === item.size &&
-                              cartItem.color === item.color;
-                            if (isSameItem) {
-                              return { ...cartItem, quantity: newQty };
-                            }
-                            return cartItem;
-                          });
-                          setCartData(updatedCartData);
-                          updateQuantity(item.productId.toString(), key, newQty);
-                        }}
-                        className='px-3 h-full bg-gray-50 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-gray-600'
-                        disabled={item.quantity >= currentStock}
-                      >+</button>
+                            setActionLoading(null); // Reset loading state
+                          }}
+                          className='w-4 sm:w-5 cursor-pointer hover:scale-110 transition-transform'
+                          src={assets.bin_icon}
+                          alt="Delete"
+                        />
+                      )}
                     </div>
-                    {/* Stock feedback */}
-                    <p className='text-xs font-medium'>
-                      {currentStock < 5 ? (
-                        currentStock > 0 ? <span className="text-orange-500">Only {currentStock} left</span> : <span className="text-red-500">Out of Stock</span>
-                      ) : null}
-                    </p>
-                  </div>
 
-                  <div className='flex justify-end'>
-                    {actionLoading === (item.productId + (item.variantId || (item.color ? `${item.size}-${item.color}` : item.size))) ? (
-                      <div className='w-4 h-4 mr-4 sm:w-5 sm:h-5 border-2 border-gray-300 border-t-black rounded-full animate-spin'></div>
-                    ) : (
-                      <img
-                        onClick={async () => {
-                          const key = item.variantId || (item.color ? `${item.size}-${item.color}` : item.size);
-                          const uniqueId = item.productId + key;
-                          // Set specific loading state for this item
-                          setActionLoading(uniqueId);
-                          await updateQuantity(item.productId.toString(), key, 0);
-                          // Refresh local cart display
-                          const refreshedCart = await getBackendCartItems();
-                          setCartData(refreshedCart);
-                          // Refresh global cart state so CartTotal updates
-                          if (token) {
-                            await getUserCart(token);
-                          }
-                          setActionLoading(null); // Reset loading state
-                        }}
-                        className='w-4 mr-4 sm:w-5 cursor-pointer hover:scale-110 transition-transform'
-                        src={assets.bin_icon}
-                        alt="Delete"
-                      />
-                    )}
+                    <div className='flex flex-col gap-1 items-start sm:order-1 scale-[0.8] sm:scale-100'>
+                      <div className='flex items-center border border-gray-300 rounded-md overflow-hidden h-8 sm:h-10'>
+                        <button
+                          onClick={async () => {
+                            const newQty = item.quantity - 1;
+                            if (newQty < 1) return;
+                            const key = item.variantId || (item.color ? `${item.size}-${item.color}` : item.size);
+                            // Optimistic update
+                            const updatedCartData = cartData.map(cartItem => {
+                              const isSameItem = cartItem.productId === item.productId &&
+                                cartItem.variantId === item.variantId &&
+                                cartItem.size === item.size &&
+                                cartItem.color === item.color;
+                              if (isSameItem) {
+                                return { ...cartItem, quantity: newQty };
+                              }
+                              return cartItem;
+                            });
+                            setCartData(updatedCartData);
+                            await updateQuantity(item.productId.toString(), key, newQty);
+                            // Refresh global cart state so CartTotal updates
+                            if (token) {
+                              await getUserCart(token);
+                            }
+                          }}
+                          className='px-3 h-full bg-gray-50 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-gray-600'
+                          disabled={item.quantity <= 1}
+                        >-</button>
+
+                        <div className='w-10 sm:w-16 h-full flex items-center justify-center font-medium text-gray-700 text-sm border-x border-gray-200 bg-white'>
+                          {item.quantity}
+                        </div>
+
+                        <button
+                          onClick={async () => {
+                            const newQty = item.quantity + 1;
+                            if (newQty > currentStock) return;
+                            const key = item.variantId || (item.color ? `${item.size}-${item.color}` : item.size);
+                            // Optimistic update
+                            const updatedCartData = cartData.map(cartItem => {
+                              const isSameItem = cartItem.productId === item.productId &&
+                                cartItem.variantId === item.variantId &&
+                                cartItem.size === item.size &&
+                                cartItem.color === item.color;
+                              if (isSameItem) {
+                                return { ...cartItem, quantity: newQty };
+                              }
+                              return cartItem;
+                            });
+                            setCartData(updatedCartData);
+                            await updateQuantity(item.productId.toString(), key, newQty);
+                            // Refresh global cart state so CartTotal updates
+                            if (token) {
+                              await getUserCart(token);
+                            }
+                          }}
+                          className='px-3 h-full bg-gray-50 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-gray-600'
+                          disabled={item.quantity >= currentStock}
+                        >+</button>
+                      </div>
+                      {/* Stock feedback */}
+                      <p className='text-xs font-medium'>
+                        {currentStock < 5 ? (
+                          currentStock > 0 ? <span className="text-orange-500">Only {currentStock} left</span> : <span className="text-red-500">Out of Stock</span>
+                        ) : null}
+                      </p>
+                    </div>
                   </div>
                 </div>
               )

@@ -4,6 +4,7 @@ import { ShopContext } from '../context/ShopContext';
 import { assets } from '../assets/assets';
 import RelatedProducts from '../components/RelatedProducts';
 import Loader from '../components/Loader';
+import SizeSelectionModal from '../components/SizeSelectionModal';
 
 const Product = () => {
 
@@ -13,6 +14,7 @@ const Product = () => {
   const [image, setImage] = useState('')
   const [size, setSize] = useState('')
   const [color, setColor] = useState('')
+  const [showSizeModal, setShowSizeModal] = useState(false)
 
   // NEW: Variant-based pricing
   const [selectedVariant, setSelectedVariant] = useState(null);
@@ -323,6 +325,12 @@ const Product = () => {
 
           <button
             onClick={() => {
+              // Check if size is selected first (for all products)
+              if (!size) {
+                setShowSizeModal(true);
+                return;
+              }
+
               // If product has variants (new model), send variantId
               if (selectedVariant) {
                 addToCart(productData._id, selectedVariant._id);
@@ -343,6 +351,36 @@ const Product = () => {
           </div>
         </div>
       </div>
+
+      {/* Size Selection Modal */}
+      <SizeSelectionModal
+        isOpen={showSizeModal}
+        onClose={() => setShowSizeModal(false)}
+        sizes={productData.sizes}
+        productData={productData}
+        onSelectSize={(selectedSize) => {
+          setSize(selectedSize);
+
+          // Find the correct variant for the selected size and current color
+          if (productData.variants && productData.variants.length > 0 && color) {
+            // NEW MODEL: Find variant by size and color
+            const variant = productData.variants.find(v =>
+              v.size === selectedSize && v.color === color
+            );
+
+            if (variant) {
+              // Add to cart with the correct variantId
+              addToCart(productData._id, variant._id);
+            } else {
+              // Fallback to old model if variant not found
+              addToCart(productData._id, selectedSize, color);
+            }
+          } else {
+            // OLD MODEL: Use size and color
+            addToCart(productData._id, selectedSize, color);
+          }
+        }}
+      />
 
       {/* ---------- Description & Review Section ------------- */}
       <div className='mt-20'>

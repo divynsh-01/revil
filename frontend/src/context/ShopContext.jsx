@@ -60,8 +60,7 @@ const ShopContextProvider = (props) => {
             const size = sizeOrVariantId;
 
             if (!size) {
-                toast.error('Select Product Size');
-                return;
+                return { needsSizeSelection: true };
             }
 
             // Validate color selection if product has colors

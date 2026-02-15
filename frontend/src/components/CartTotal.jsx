@@ -21,7 +21,7 @@ const CartTotal = () => {
       setCartTotal(total);
     };
     fetchCartTotal();
-  }, [cartItems]); // Recalculate when cart changes
+  }, [cartItems, getCartAmount]); // Recalculate when cart changes
 
   const finalTotal = cartTotal === 0 ? 0 : cartTotal + delivery_fee - couponDiscount;
 
