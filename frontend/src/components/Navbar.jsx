@@ -17,7 +17,7 @@ const Navbar = () => {
     }
 
     return (
-        <nav className='flex items-center justify-between py-6 px-4 sm:px-0 font-medium border-b border-neutral-200'>
+        <nav className='flex items-center justify-between py-6 px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw] font-medium border-b border-[#e5e5e5] bg-[#fcfbf9] relative w-full z-50'>
 
             <Link to='/' className='transition-opacity hover:opacity-70'>
                 <img src={assets.logo} className='w-32 sm:w-36' alt="Logo" />
