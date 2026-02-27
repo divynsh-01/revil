@@ -25,7 +25,7 @@ const App = () => {
       <ToastContainer />
       <Navbar />
       <SearchBar />
-      <div className='px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
+      <div>
         <Routes>
           <Route path='/' element={<Home />} />
           <Route path='/collection' element={<Collection />} />
@@ -41,7 +41,9 @@ const App = () => {
           <Route path='/profile' element={<Profile />} />
           <Route path='/verify' element={<Verify />} />
         </Routes>
-        <Footer />
+        <div className='px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
+          <Footer />
+        </div>
       </div>
     </div>
   )

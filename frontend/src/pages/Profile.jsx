@@ -131,7 +131,7 @@ const Profile = () => {
     }
 
     return (
-        <div className='border-t pt-16 pb-20 px-4 sm:px-0'>
+        <div className='border-t pt-16 pb-20 px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
             <div className='max-w-4xl mx-auto'>
 
                 {/* Page Title */}

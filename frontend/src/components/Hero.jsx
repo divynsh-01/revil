@@ -1,9 +1,11 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { assets } from '../assets/assets'
 import { Link } from 'react-router-dom'
 
 const Hero = () => {
   const scrollRef = useRef(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const isAutoScrolling = useRef(false);
 
   const slides = [
     { id: 1, image: assets.web_home, title: 'Premium Essentials', link: '/collection' },
@@ -13,23 +15,71 @@ const Hero = () => {
     { id: 5, image: assets.p_img1, title: 'Womenswear', link: '/collection' }
   ];
 
-  const scrollNext = () => {
+  // Helper to get scroll padding
+  const getScrollPadding = useCallback(() => {
+    if (!scrollRef.current) return 0;
+    const style = window.getComputedStyle(scrollRef.current);
+    return parseFloat(style.scrollPaddingLeft) || parseFloat(style.paddingLeft) || 0;
+  }, []);
+
+  const scrollToIndex = useCallback((index, smooth = true) => {
     if (scrollRef.current) {
-      const cardElement = scrollRef.current.firstElementChild;
-      if (cardElement) {
-        // scroll by one card width plus the gap (gap-4 or gap-6)
-        const gap = window.innerWidth >= 640 ? 24 : 16;
-        scrollRef.current.scrollBy({ left: cardElement.offsetWidth + gap, behavior: 'smooth' });
+      const container = scrollRef.current;
+      const children = Array.from(container.children).filter(el => el.getAttribute('data-slide') === 'true');
+      const targetChild = children[index];
+
+      if (targetChild) {
+        isAutoScrolling.current = true;
+        const padding = getScrollPadding();
+        const targetScrollLeft = targetChild.offsetLeft - padding;
+
+        container.scrollTo({
+          left: targetScrollLeft,
+          behavior: smooth ? 'smooth' : 'auto'
+        });
+
+        setActiveIndex(index);
+
+        // Reset the auto-scrolling flag after the animation completes
+        setTimeout(() => {
+          isAutoScrolling.current = false;
+        }, 700);
       }
     }
-  };
+  }, [getScrollPadding]);
 
-  const scrollPrev = () => {
-    if (scrollRef.current) {
-      const cardElement = scrollRef.current.firstElementChild;
-      if (cardElement) {
-        const gap = window.innerWidth >= 640 ? 24 : 16;
-        scrollRef.current.scrollBy({ left: -(cardElement.offsetWidth + gap), behavior: 'smooth' });
+  // Auto-play logic
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const nextIndex = (activeIndex + 1) % slides.length;
+      scrollToIndex(nextIndex);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [activeIndex, slides.length, scrollToIndex]);
+
+  // Handle scroll events to update active index
+  const handleScroll = () => {
+    if (scrollRef.current && !isAutoScrolling.current) {
+      const container = scrollRef.current;
+      const scrollPosition = container.scrollLeft;
+      const padding = getScrollPadding();
+      const children = Array.from(container.children).filter(el => el.getAttribute('data-slide') === 'true');
+
+      let closestIndex = 0;
+      let minDistance = Infinity;
+
+      children.forEach((child, index) => {
+        const childTargetPos = child.offsetLeft - padding;
+        const distance = Math.abs(childTargetPos - scrollPosition);
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestIndex = index;
+        }
+      });
+
+      if (closestIndex !== activeIndex) {
+        setActiveIndex(closestIndex);
       }
     }
   };
@@ -37,84 +87,62 @@ const Hero = () => {
   return (
     <div className='w-full overflow-hidden bg-white'>
 
-      {/* Hero Header Section */}
-      <div className='flex flex-col items-center justify-center text-center mb-8 px-4'>
-        <div className='flex items-center gap-4 mb-4 sm:mb-6'>
-          <div className='w-8 sm:w-16 h-[2px] bg-[#333333]'></div>
-          <p className='font-bold text-xs sm:text-sm uppercase tracking-[0.2em] text-[#333333] font-sans'>
-            Discover
-          </p>
-          <div className='w-8 sm:w-16 h-[2px] bg-[#333333]'></div>
-        </div>
-        <h1 className='text-4xl sm:text-5xl lg:text-6xl leading-[1.1] text-[#1a1a1a] font-serif tracking-tight max-w-2xl'>
-          Curated Collections
-        </h1>
-      </div>
-
       {/* Slider Container */}
-      <div className='relative w-full pb-16 group'>
+      <div className='relative w-full pb-14 group'>
 
-        {/* Track - Native Scroll Snap */}
+        {/* Track - Truly Edge-to-Edge */}
         <div
           ref={scrollRef}
-          className='flex overflow-x-auto snap-x snap-mandatory gap-4 sm:gap-6 px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw] pb-4 lg:scroll-p-[9vw] md:scroll-p-[7vw] sm:scroll-p-[5vw] scroll-p-4 hide-scrollbar'
+          onScroll={handleScroll}
+          className='flex overflow-x-auto snap-x snap-mandatory gap-0 pb-10 hide-scrollbar'
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
-          {/* Hide webkit scrollbar via internal style string for tailwind simplicity without custom plugins */}
-          <style>{`.hide - scrollbar:: -webkit - scrollbar { display: none; } `}</style>
+          <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; }`}</style>
 
-          {slides.map((slide) => (
+          {slides.map((slide, index) => (
             <div
               key={slide.id}
-              // 70% width allows the active image to be massive, while letting the *next* image comfortably peek in from the right edge.
-              className='snap-start w-[85vw] sm:w-[70vw] lg:w-[65vw] max-w-[1200px] h-[55vh] min-h-[450px] max-h-[700px] flex-shrink-0 relative rounded-2xl md:rounded-[2rem] overflow-hidden bg-[#f0eee9] group/card shadow-sm'
+              data-slide="true"
+              className={`snap-start w-full md:w-[96vw] lg:w-[98vw] h-[65vh] min-h-[550px] max-h-[950px] flex-shrink-0 relative overflow-hidden bg-[#f3f1ed] group/card transition-all duration-1000 ease-out z-10 ${activeIndex === index ? 'opacity-100' : 'opacity-30 blur-[2px] pointer-events-none'}`}
             >
-              {/* Image */}
               <img
-                className='absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover/card:scale-105'
+                className='absolute inset-0 w-full h-full object-cover object-top transition-transform duration-[2000ms] group-hover/card:scale-110'
                 src={slide.image}
                 alt={slide.title}
               />
 
-              {/* Gradient Overlay for Text Readability */}
-              <div className='absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-80' />
+              <div className='absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent opacity-90' />
 
-              {/* Card Content Overlay */}
-              <div className='absolute bottom-0 left-0 right-0 p-8 sm:p-12 lg:p-16 flex flex-col items-start translate-y-4 group-hover/card:translate-y-0 transition-transform duration-500'>
-                <h3 className='text-white text-3xl sm:text-4xl lg:text-5xl font-serif tracking-wide mb-6 leading-tight drop-shadow-lg'>
-                  {slide.title}
-                </h3>
-                <Link
-                  to={slide.link}
-                  className='inline-flex items-center justify-center px-8 py-3.5 bg-white text-black text-xs sm:text-sm font-bold uppercase tracking-widest rounded-full opacity-0 group-hover/card:opacity-100 transition-all duration-500 hover:bg-black hover:text-white shadow-xl'
-                >
-                  Explore Collection
-                </Link>
+              {/* Text Content Container - Scaled for Readability */}
+              <div className='absolute inset-0 flex flex-col justify-end p-8 sm:p-20 lg:p-32'>
+                <div className='w-full max-w-screen-2xl mx-auto flex flex-col items-start translate-y-8 group-hover/card:translate-y-0 transition-transform duration-1000'>
+                  <h3 className='text-white text-5xl sm:text-7xl lg:text-[10rem] font-serif tracking-tighter mb-10 leading-[0.85] drop-shadow-2xl'>
+                    {slide.title}
+                  </h3>
+                  <Link
+                    to={slide.link}
+                    className='inline-flex items-center justify-center px-12 py-5 bg-white text-black text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] rounded-full sm:opacity-0 group-hover/card:opacity-100 transition-all duration-700 hover:bg-black hover:text-white shadow-2xl scale-90 hover:scale-100'
+                  >
+                    View Collection
+                  </Link>
+                </div>
               </div>
             </div>
           ))}
 
-          {/* Spacer to allow the last item to scroll far enough left on desktop so it isn't forced back */}
-          <div className='w-[10vw] flex-shrink-0'></div>
+          {/* Minimal spacer if needed, but for full-width w-full it's often not required */}
         </div>
 
-        {/* Navigation Controls */}
-        <div className='absolute bottom-0 left-0 right-0 flex justify-center items-center gap-6 z-20 mt-4'>
-          <button
-            onClick={scrollPrev}
-            className='w-14 h-14 rounded-full border border-gray-300 bg-white flex items-center justify-center text-gray-800 hover:bg-black hover:text-white hover:border-black transition-all duration-300 shadow-md'
-            aria-label="Previous slide"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" /></svg>
-          </button>
-
-          <button
-            onClick={scrollNext}
-            className='w-14 h-14 rounded-full border border-gray-300 bg-white flex items-center justify-center text-gray-800 hover:bg-black hover:text-white hover:border-black transition-all duration-300 shadow-md'
-            aria-label="Next slide"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" /></svg>
-          </button>
+        {/* Dot Indicators */}
+        <div className='flex justify-center items-center gap-4 mb-10'>
+          {slides.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => scrollToIndex(index)}
+              className={`h-1.5 transition-all duration-500 rounded-full ${activeIndex === index ? 'w-12 bg-black' : 'w-1.5 bg-gray-300 hover:bg-black/50'}`}
+              aria-label={`Go to slide ${index + 1}`}
+            />
+          ))}
         </div>
 
       </div>

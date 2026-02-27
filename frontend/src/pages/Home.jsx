@@ -11,7 +11,7 @@ const Home = () => {
       <div className='pt-6'>
         <Hero />
       </div>
-      <div className='pt-10'>
+      <div className='pt-10 px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
         <LatestCollection />
         <BestSeller />
         <OurPolicy />
