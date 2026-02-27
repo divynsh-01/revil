@@ -1,19 +1,41 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react'
+import React, { useRef, useState, useEffect, useCallback, useContext } from 'react'
 import { assets } from '../assets/assets'
 import { Link } from 'react-router-dom'
+import { ShopContext } from '../context/ShopContext'
+import axios from 'axios'
 
 const Hero = () => {
+  const { backendUrl } = useContext(ShopContext);
   const scrollRef = useRef(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const isAutoScrolling = useRef(false);
+  const [slides, setSlides] = useState([]);
 
-  const slides = [
+  const defaultSlides = [
     { id: 1, image: assets.web_home, title: 'Premium Essentials', link: '/collection' },
     { id: 2, image: assets.web_home_2, title: 'Summer Collection', link: '/collection' },
     { id: 3, image: assets.hero_img, title: 'New Arrivals', link: '/collection' },
     { id: 4, image: assets.p_img2_1, title: 'Streetwear', link: '/collection' },
     { id: 5, image: assets.p_img1, title: 'Womenswear', link: '/collection' }
   ];
+
+  const fetchSlides = useCallback(async () => {
+    try {
+      const response = await axios.get(backendUrl + '/api/hero/list');
+      if (response.data.success && response.data.heroes.length > 0) {
+        setSlides(response.data.heroes);
+      } else {
+        setSlides(defaultSlides);
+      }
+    } catch (error) {
+      console.log(error);
+      setSlides(defaultSlides);
+    }
+  }, [backendUrl]);
+
+  useEffect(() => {
+    fetchSlides();
+  }, [fetchSlides]);
 
   // Helper to get scroll padding
   const getScrollPadding = useCallback(() => {
@@ -23,7 +45,7 @@ const Hero = () => {
   }, []);
 
   const scrollToIndex = useCallback((index, smooth = true) => {
-    if (scrollRef.current) {
+    if (scrollRef.current && slides.length > 0) {
       const container = scrollRef.current;
       const children = Array.from(container.children).filter(el => el.getAttribute('data-slide') === 'true');
       const targetChild = children[index];
@@ -46,10 +68,11 @@ const Hero = () => {
         }, 700);
       }
     }
-  }, [getScrollPadding]);
+  }, [getScrollPadding, slides.length]);
 
   // Auto-play logic
   useEffect(() => {
+    if (slides.length === 0) return;
     const interval = setInterval(() => {
       const nextIndex = (activeIndex + 1) % slides.length;
       scrollToIndex(nextIndex);
@@ -101,7 +124,7 @@ const Hero = () => {
 
           {slides.map((slide, index) => (
             <div
-              key={slide.id}
+              key={slide._id || slide.id}
               data-slide="true"
               className={`snap-start w-full md:w-[96vw] lg:w-[98vw] h-[65vh] min-h-[550px] max-h-[950px] flex-shrink-0 relative overflow-hidden bg-[#f3f1ed] group/card transition-all duration-1000 ease-out z-10 ${activeIndex === index ? 'opacity-100' : 'opacity-30 blur-[2px] pointer-events-none'}`}
             >
@@ -116,9 +139,14 @@ const Hero = () => {
               {/* Text Content Container - Scaled for Readability */}
               <div className='absolute inset-0 flex flex-col justify-end p-8 sm:p-20 lg:p-32'>
                 <div className='w-full max-w-screen-2xl mx-auto flex flex-col items-start translate-y-8 group-hover/card:translate-y-0 transition-transform duration-1000'>
-                  <h3 className='text-white text-5xl sm:text-7xl lg:text-[10rem] font-serif tracking-tighter mb-10 leading-[0.85] drop-shadow-2xl'>
+                  <h3 className={`text-white text-5xl sm:text-7xl lg:text-[10rem] font-serif tracking-tighter leading-[0.85] drop-shadow-2xl ${slide.subtitle ? 'mb-4' : 'mb-10'}`}>
                     {slide.title}
                   </h3>
+                  {slide.subtitle && (
+                    <p className='text-white/90 text-lg sm:text-2xl font-light mb-10 tracking-wide drop-shadow-md'>
+                      {slide.subtitle}
+                    </p>
+                  )}
                   <Link
                     to={slide.link}
                     className='inline-flex items-center justify-center px-12 py-5 bg-white text-black text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] rounded-full sm:opacity-0 group-hover/card:opacity-100 transition-all duration-700 hover:bg-black hover:text-white shadow-2xl scale-90 hover:scale-100'

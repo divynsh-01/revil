@@ -12,6 +12,7 @@ import Coupons from './pages/Coupons'
 import Users from './pages/Users'
 import Edit from './pages/Edit'
 import Dashboard from './pages/Dashboard'
+import Carousel from './pages/Carousel'
 import Login from './components/Login'
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -49,6 +50,7 @@ const App = () => {
                 <Route path='/colors' element={<Colors token={token} />} />
                 <Route path='/coupons' element={<Coupons token={token} />} />
                 <Route path='/users' element={<Users token={token} />} />
+                <Route path='/carousel' element={<Carousel token={token} />} />
               </Routes>
             </div>
           </div>
