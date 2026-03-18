@@ -126,35 +126,37 @@ const Hero = () => {
             <div
               key={slide._id || slide.id}
               data-slide="true"
-              className={`snap-start w-full md:w-[96vw] lg:w-[98vw] h-[65vh] min-h-[550px] max-h-[950px] flex-shrink-0 relative overflow-hidden bg-[#f3f1ed] group/card transition-all duration-1000 ease-out z-10 ${activeIndex === index ? 'opacity-100' : 'opacity-30 blur-[2px] pointer-events-none'}`}
+              className={`snap-start w-full md:w-[96vw] lg:w-[98vw] h-[50vh] sm:h-[65vh] lg:h-[75vh] min-h-[500px] flex-shrink-0 relative overflow-hidden bg-[#f3f1ed] group/card transition-all duration-1000 ease-out z-10 ${activeIndex === index ? 'opacity-100' : 'opacity-30 blur-[2px] pointer-events-none'}`}
             >
-              <img
-                className='absolute inset-0 w-full h-full object-cover object-top transition-transform duration-[2000ms] group-hover/card:scale-110'
-                src={slide.image}
-                alt={slide.title}
-              />
-
-              <div className='absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent opacity-90' />
-
-              {/* Text Content Container - Scaled for Readability */}
-              <div className='absolute inset-0 flex flex-col justify-end p-8 sm:p-20 lg:p-32'>
-                <div className='w-full max-w-screen-2xl mx-auto flex flex-col items-start translate-y-8 group-hover/card:translate-y-0 transition-transform duration-1000'>
-                  <h3 className={`text-white text-5xl sm:text-7xl lg:text-[10rem] font-serif tracking-tighter leading-[0.85] drop-shadow-2xl ${slide.subtitle ? 'mb-4' : 'mb-10'}`}>
-                    {slide.title}
-                  </h3>
-                  {slide.subtitle && (
-                    <p className='text-white/90 text-lg sm:text-2xl font-light mb-10 tracking-wide drop-shadow-md'>
-                      {slide.subtitle}
-                    </p>
-                  )}
-                  <Link
-                    to={slide.link}
-                    className='inline-flex items-center justify-center px-12 py-5 bg-white text-black text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] rounded-full sm:opacity-0 group-hover/card:opacity-100 transition-all duration-700 hover:bg-black hover:text-white shadow-2xl scale-90 hover:scale-100'
-                  >
-                    View Collection
-                  </Link>
+                <img
+                  className='absolute inset-0 w-full h-full object-cover object-left-top sm:object-top transition-transform duration-[2000ms] group-hover/card:scale-110'
+                  src={slide.image}
+                  alt={slide.title || "Hero Slide"}
+                />
+  
+                <div className='absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent opacity-90' />
+  
+                {/* Text Content Container - Scaled for Readability */}
+                <div className='absolute inset-0 flex flex-col justify-end px-8 py-10 sm:px-20 sm:pb-16 sm:pt-20 lg:px-32 lg:pb-20 lg:pt-32'>
+                  <div className='w-full max-w-screen-2xl mx-auto flex flex-col items-start translate-y-8 group-hover/card:translate-y-0 transition-transform duration-1000'>
+                    {slide.title && (
+                      <h3 className={`text-white text-5xl sm:text-7xl lg:text-[10rem] font-serif tracking-tighter leading-[0.85] drop-shadow-2xl ${slide.subtitle ? 'mb-4' : 'mb-10'}`}>
+                        {slide.title}
+                      </h3>
+                    )}
+                    {slide.subtitle && (
+                      <p className='text-white/90 text-lg sm:text-2xl font-light mb-10 tracking-wide drop-shadow-md'>
+                        {slide.subtitle}
+                      </p>
+                    )}
+                    <Link
+                      to={slide.link}
+                      className={`inline-flex items-center justify-center px-12 py-5 bg-white text-black text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] rounded-full sm:opacity-0 group-hover/card:opacity-100 transition-all duration-700 hover:bg-black hover:text-white shadow-2xl scale-90 hover:scale-100 ${!slide.title && !slide.subtitle ? 'mt-10' : ''}`}
+                    >
+                      View Collection
+                    </Link>
+                  </div>
                 </div>
-              </div>
             </div>
           ))}
 

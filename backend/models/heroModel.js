@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const heroSchema = new mongoose.Schema({
     image: { type: String, required: true },
-    title: { type: String, required: true },
+    title: { type: String },
     subtitle: { type: String },
     link: { type: String, required: true },
     order: { type: Number, default: 0 },

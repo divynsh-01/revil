@@ -125,7 +125,7 @@ const Carousel = ({ token }) => {
                     <div className='flex-1 flex flex-col gap-3 min-w-[280px]'>
                         <div className='w-full'>
                             <p className='mb-1 text-sm'>Slide Title</p>
-                            <input onChange={(e) => setTitle(e.target.value)} value={title} className='w-full px-3 py-2 border' type="text" placeholder='e.g. Premium Essentials' required />
+                            <input onChange={(e) => setTitle(e.target.value)} value={title} className='w-full px-3 py-2 border' type="text" placeholder='e.g. Premium Essentials' />
                         </div>
                         <div className='w-full'>
                             <p className='mb-1 text-sm'>Slide Subtitle (Optional)</p>
