@@ -255,8 +255,8 @@ const Product = () => {
                     return (
                       <button
                         onClick={() => !isOutOfStock && setColor(item)}
-                        className={`border py-2 px-4 relative ${isOutOfStock && size ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-100'
-                          } ${item === color ? 'border-orange-500 bg-orange-50' : ''}`}
+                        className={`border py-2 px-4 relative transition-all ${isOutOfStock && size ? 'bg-neutral-50 text-neutral-300 border-neutral-100 cursor-not-allowed' : 'bg-neutral-50'
+                          } ${item === color ? 'border-neutral-900 bg-white ring-1 ring-neutral-900' : 'border-neutral-200'}`}
                         key={index}
                         disabled={isOutOfStock && size}
                       >
@@ -305,8 +305,8 @@ const Product = () => {
                   return (
                     <button
                       onClick={() => !isOutOfStock && setSize(item)}
-                      className={`border py-2 px-4 relative ${isOutOfStock && color ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-100'
-                        } ${item === size ? 'border-orange-500' : ''}`}
+                      className={`border py-2 px-4 relative transition-all ${isOutOfStock && color ? 'bg-neutral-50 text-neutral-300 border-neutral-100 cursor-not-allowed' : 'bg-neutral-50'
+                        } ${item === size ? 'border-neutral-900 bg-white ring-1 ring-neutral-900' : 'border-neutral-200'}`}
                       key={index}
                       disabled={isOutOfStock && color}
                     >
@@ -324,26 +324,45 @@ const Product = () => {
               )}
             </div>
 
-            <button
-              onClick={() => {
-                // Check if size is selected first (for all products)
-                if (!size) {
-                  setShowSizeModal(true);
-                  return;
-                }
+            {/* NEW: Hide/Disable button if completely out of stock across all variants */}
+            {(() => {
+              const isProductOutOfStock = productData.variants && productData.variants.length > 0
+                ? productData.variants.every(v => v.stock <= 0)
+                : (productData.stockByVariant
+                  ? Object.values(productData.stockByVariant).every(s => s <= 0)
+                  : false);
 
-                // If product has variants (new model), send variantId
-                if (selectedVariant) {
-                  addToCart(productData._id, selectedVariant._id);
-                } else {
-                  // Backward compatibility: send size and color
-                  addToCart(productData._id, size, color);
-                }
-              }}
-              className='bg-black text-white px-8 py-3 text-sm active:bg-gray-700'
-            >
-              ADD TO CART
-            </button>
+              if (isProductOutOfStock) {
+                return (
+                  <button className='bg-neutral-100 text-neutral-400 border border-neutral-200 px-8 py-3 text-sm cursor-not-allowed uppercase tracking-widest font-medium' disabled>
+                    Out of Stock
+                  </button>
+                );
+              }
+
+              return (
+                <button
+                  onClick={() => {
+                    // Check if size is selected first (for all products)
+                    if (!size) {
+                      setShowSizeModal(true);
+                      return;
+                    }
+
+                    // If product has variants (new model), send variantId
+                    if (selectedVariant) {
+                      addToCart(productData._id, selectedVariant._id);
+                    } else {
+                      // Backward compatibility: send size and color
+                      addToCart(productData._id, size, color);
+                    }
+                  }}
+                  className='bg-black text-white px-8 py-3 text-sm active:bg-gray-700'
+                >
+                  ADD TO CART
+                </button>
+              );
+            })()}
             <hr className='mt-8 sm:w-4/5' />
             <div className='text-sm text-gray-500 mt-5 flex flex-col gap-1'>
               <p>100% Original product.</p>
