@@ -6,12 +6,12 @@ import Loader from './Loader';
 
 const LatestCollection = () => {
 
-  const { products, loading } = useContext(ShopContext);
+  const { inStockProducts, loading } = useContext(ShopContext);
   const [latestProducts, setLatestProducts] = useState([]);
 
   useEffect(() => {
-    setLatestProducts(products.slice(0, 10));
-  }, [products])
+    setLatestProducts(inStockProducts.slice(0, 10));
+  }, [inStockProducts])
 
   return (
     <div className='my-20 px-4 sm:px-0'>

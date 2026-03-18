@@ -6,13 +6,13 @@ import Loader from './Loader';
 
 const BestSeller = () => {
 
-  const { products, loading } = useContext(ShopContext);
+  const { inStockProducts, loading } = useContext(ShopContext);
   const [bestSeller, setBestSeller] = useState([]);
 
   useEffect(() => {
-    const bestProduct = products.filter((item) => (item.bestseller));
+    const bestProduct = inStockProducts.filter((item) => (item.bestseller));
     setBestSeller(bestProduct.slice(0, 5))
-  }, [products])
+  }, [inStockProducts])
 
   return (
     <div className='my-20 px-4 sm:px-0'>

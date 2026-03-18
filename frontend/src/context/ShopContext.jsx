@@ -19,6 +19,37 @@ const ShopContextProvider = (props) => {
     const [token, setToken] = useState('')
     const navigate = useNavigate();
 
+    // Determine if a product has any stock available (across variants or legacy stock map)
+    const isProductInStock = (product) => {
+        if (!product) return false;
+
+        // New model: variants with stock
+        if (product.variants && product.variants.length > 0) {
+            return product.variants.some(v => {
+                if (!v) return false;
+                const stock = Number(v.stock);
+                if (!Number.isNaN(stock)) {
+                    return stock > 0;
+                }
+                return Boolean(v.stock);
+            });
+        }
+
+        // Legacy model: stockByVariant map
+        const stockByVariant = product.stockByVariant;
+        if (stockByVariant) {
+            const values = stockByVariant instanceof Map
+                ? Array.from(stockByVariant.values())
+                : Object.values(stockByVariant);
+            return values.some(v => Number(v) > 0);
+        }
+
+        // If no stock data is present, don't hide the product
+        return true;
+    };
+
+    const inStockProducts = products.filter(isProductInStock);
+
 
     const addToCart = async (itemId, sizeOrVariantId, color) => {
 
@@ -331,7 +362,7 @@ const ShopContextProvider = (props) => {
     }, [token])
 
     const value = {
-        products, currency, delivery_fee, loading,
+        products, inStockProducts, currency, delivery_fee, loading,
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart, setCartItems,
         getCartCount, updateQuantity,

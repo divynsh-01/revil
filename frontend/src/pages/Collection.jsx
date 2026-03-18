@@ -8,7 +8,7 @@ import Loader from '../components/Loader';
 
 const Collection = () => {
 
-  const { products, search, showSearch, loading, backendUrl } = useContext(ShopContext);
+  const { inStockProducts, search, showSearch, loading, backendUrl } = useContext(ShopContext);
   const [showFilter, setShowFilter] = useState(false);
   const [filterProducts, setFilterProducts] = useState([]);
 
@@ -87,7 +87,8 @@ const Collection = () => {
   }
 
   const applyFilter = () => {
-    let productsCopy = products.slice();
+    // Always filter out products that are fully out of stock
+    let productsCopy = inStockProducts.slice();
 
     // Search filter
     if (showSearch && search) {
@@ -191,7 +192,7 @@ const Collection = () => {
 
   useEffect(() => {
     applyFilter();
-  }, [category, subCategory, sizes, colors, priceRange, search, showSearch, products])
+  }, [category, subCategory, sizes, colors, priceRange, search, showSearch, inStockProducts])
 
   useEffect(() => {
     sortProduct();
