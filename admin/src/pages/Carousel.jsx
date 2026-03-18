@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { assets } from '../assets/assets'
 import axios from 'axios'
 import { backendUrl } from '../App'
-import { toast } from 'react-toastify'
+import { useNotification } from '../context/NotificationContext'
 
 const Carousel = ({ token }) => {
+    const { show } = useNotification();
     const [list, setList] = useState([])
     const [image, setImage] = useState(false)
     const [title, setTitle] = useState("")
@@ -20,11 +21,11 @@ const Carousel = ({ token }) => {
             if (response.data.success) {
                 setList(response.data.heroes)
             } else {
-                toast.error(response.data.message)
+                show(response.data.message, 'error')
             }
         } catch (error) {
             console.log(error)
-            toast.error(error.message)
+            show(error.message, 'error')
         }
     }
 
@@ -32,7 +33,7 @@ const Carousel = ({ token }) => {
         e.preventDefault()
         try {
             if (!editingId && !image) {
-                toast.error("Image is required for new slide");
+                show("Image is required for new slide", 'error');
                 return;
             }
 
@@ -53,15 +54,15 @@ const Carousel = ({ token }) => {
             const response = await axios.post(url, formData, { headers: { token } })
 
             if (response.data.success) {
-                toast.success(response.data.message)
+                show(response.data.message, 'success')
                 clearForm()
                 fetchList()
             } else {
-                toast.error(response.data.message)
+                show(response.data.message, 'error')
             }
         } catch (error) {
             console.log(error)
-            toast.error(error.message)
+            show(error.message, 'error')
         } finally {
             setIsSubmitting(false)
         }
@@ -90,14 +91,14 @@ const Carousel = ({ token }) => {
         try {
             const response = await axios.post(backendUrl + '/api/hero/remove', { id }, { headers: { token } })
             if (response.data.success) {
-                toast.success(response.data.message)
+                show(response.data.message, 'success')
                 fetchList()
             } else {
-                toast.error(response.data.message)
+                show(response.data.message, 'error')
             }
         } catch (error) {
             console.log(error)
-            toast.error(error.message)
+            show(error.message, 'error')
         }
     }
 

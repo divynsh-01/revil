@@ -1,12 +1,13 @@
 import React, { useContext, useState, useEffect } from 'react'
 import { ShopContext } from '../context/ShopContext'
+import { useNotification } from '../context/NotificationContext'
 import Title from './Title';
 import axios from 'axios';
-import { toast } from 'react-toastify';
 
 const CartTotal = () => {
 
   const { currency, delivery_fee, getCartAmount, backendUrl, cartItems } = useContext(ShopContext);
+  const { show } = useNotification();
 
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -27,7 +28,7 @@ const CartTotal = () => {
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) {
-      toast.error('Please enter a coupon code');
+      show('Please enter a coupon code', 'error');
       return;
     }
 
@@ -41,13 +42,13 @@ const CartTotal = () => {
       if (response.data.success) {
         setAppliedCoupon(response.data.coupon);
         setCouponDiscount(response.data.coupon.discount);
-        toast.success(response.data.message);
+        show(response.data.message, 'success');
       } else {
-        toast.error(response.data.message);
+        show(response.data.message, 'error');
       }
     } catch (error) {
       console.log(error);
-      toast.error('Failed to apply coupon');
+      show('Failed to apply coupon', 'error');
     }
     setIsApplying(false);
   }
@@ -56,7 +57,7 @@ const CartTotal = () => {
     setAppliedCoupon(null);
     setCouponDiscount(0);
     setCouponCode('');
-    toast.info('Coupon removed');
+    show('Coupon removed', 'info');
   }
 
   return (

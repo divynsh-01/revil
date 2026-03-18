@@ -1,12 +1,13 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { ShopContext } from '../context/ShopContext';
+import { useNotification } from '../context/NotificationContext';
 import axios from 'axios';
-import { toast } from 'react-toastify';
 
 const Login = () => {
 
   const [currentState, setCurrentState] = useState('Login');
   const { token, setToken, navigate, backendUrl } = useContext(ShopContext)
+  const { show } = useNotification();
 
   const [name,setName] = useState('')
   const [password,setPasword] = useState('')
@@ -22,7 +23,7 @@ const Login = () => {
             setToken(response.data.token)
             localStorage.setItem('token',response.data.token)
           } else {
-            toast.error(response.data.message)
+            show(response.data.message, 'error')
           }
 
         } else {
@@ -32,7 +33,7 @@ const Login = () => {
             setToken(response.data.token)
             localStorage.setItem('token',response.data.token)
           } else {
-            toast.error(response.data.message)
+            show(response.data.message, 'error')
           }
 
         }
@@ -40,7 +41,7 @@ const Login = () => {
 
       } catch (error) {
         console.log(error)
-        toast.error(error.message)
+        show(error.message, 'error')
       }
   }
 

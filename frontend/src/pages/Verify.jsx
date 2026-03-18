@@ -3,12 +3,13 @@ import { useContext } from 'react'
 import { ShopContext } from '../context/ShopContext'
 import { useSearchParams } from 'react-router-dom'
 import { useEffect } from 'react'
-import { toast } from 'react-toastify'
+import { useNotification } from '../context/NotificationContext'
 import axios from 'axios'
 
 const Verify = () => {
 
     const { navigate, token, setCartItems, backendUrl } = useContext(ShopContext)
+    const { show } = useNotification();
     const [searchParams, setSearchParams] = useSearchParams()
 
     const success = searchParams.get('success')
@@ -32,7 +33,7 @@ const Verify = () => {
 
         } catch (error) {
             console.log(error)
-            toast.error(error.message)
+            show(error.message, 'error')
         }
     }
 

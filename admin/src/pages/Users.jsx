@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { backendUrl } from '../App';
-import { toast } from 'react-toastify';
+import { useNotification } from '../context/NotificationContext';
 
 const Users = ({ token }) => {
+    const { show } = useNotification();
     const [users, setUsers] = useState([]);
     const [currentUserRole, setCurrentUserRole] = useState('');
 
@@ -33,11 +34,11 @@ const Users = ({ token }) => {
             if (response.data.success) {
                 setUsers(response.data.users);
             } else {
-                toast.error(response.data.message);
+                show(response.data.message, 'error');
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 
@@ -51,14 +52,14 @@ const Users = ({ token }) => {
             );
 
             if (response.data.success) {
-                toast.success(response.data.message);
+                show(response.data.message, 'success');
                 fetchUsers(); // Refresh list
             } else {
-                toast.error(response.data.message);
+                show(response.data.message, 'error');
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 
@@ -72,14 +73,14 @@ const Users = ({ token }) => {
             );
 
             if (response.data.success) {
-                toast.success(response.data.message);
+                show(response.data.message, 'success');
                 fetchUsers(); // Refresh list
             } else {
-                toast.error(response.data.message);
+                show(response.data.message, 'error');
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 

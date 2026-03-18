@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { ShopContext } from '../context/ShopContext';
+import { useNotification } from '../context/NotificationContext';
 import Title from '../components/Title';
 import axios from 'axios';
-import { toast } from 'react-toastify';
 
 const Addresses = () => {
     const { backendUrl, token, navigate } = useContext(ShopContext);
+    const { show } = useNotification();
     const [addresses, setAddresses] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
@@ -30,7 +31,7 @@ const Addresses = () => {
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 
@@ -61,7 +62,7 @@ const Addresses = () => {
                     { headers: { token } }
                 );
                 if (response.data.success) {
-                    toast.success('Address updated successfully');
+                    show('Address updated successfully', 'success');
                     fetchAddresses();
                     resetForm();
                 }
@@ -72,14 +73,14 @@ const Addresses = () => {
                     { headers: { token } }
                 );
                 if (response.data.success) {
-                    toast.success('Address added successfully');
+                    show('Address added successfully', 'success');
                     fetchAddresses();
                     resetForm();
                 }
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 
@@ -107,12 +108,12 @@ const Addresses = () => {
                 { headers: { token } }
             );
             if (response.data.success) {
-                toast.success('Address deleted successfully');
+                show('Address deleted successfully', 'success');
                 fetchAddresses();
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 
@@ -123,12 +124,12 @@ const Addresses = () => {
                 { headers: { token } }
             );
             if (response.data.success) {
-                toast.success('Default address updated');
+                show('Default address updated', 'success');
                 fetchAddresses();
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 

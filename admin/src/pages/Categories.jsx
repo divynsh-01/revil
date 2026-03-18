@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { backendUrl } from '../App';
-import { toast } from 'react-toastify';
+import { useNotification } from '../context/NotificationContext';
 
 const Categories = ({ token }) => {
     const [categories, setCategories] = useState([]);
+    const { show } = useNotification();
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [isIdManual, setIsIdManual] = useState(false);
@@ -34,7 +35,7 @@ const Categories = ({ token }) => {
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 
@@ -72,7 +73,7 @@ const Categories = ({ token }) => {
                     { headers: { token } }
                 );
                 if (response.data.success) {
-                    toast.success('Category updated successfully');
+                    show('Category updated successfully', 'success');
                     fetchCategories();
                     resetForm();
                 }
@@ -83,14 +84,14 @@ const Categories = ({ token }) => {
                     { headers: { token } }
                 );
                 if (response.data.success) {
-                    toast.success('Category added successfully');
+                    show('Category added successfully', 'success');
                     fetchCategories();
                     resetForm();
                 }
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 
@@ -114,12 +115,12 @@ const Categories = ({ token }) => {
                 { headers: { token } }
             );
             if (response.data.success) {
-                toast.success('Category deleted successfully');
+                show('Category deleted successfully', 'success');
                 fetchCategories();
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 

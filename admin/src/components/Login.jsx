@@ -1,10 +1,11 @@
 import axios from 'axios'
 import React, { useState } from 'react'
 import { backendUrl } from '../App'
-import { toast } from 'react-toastify'
+import { useNotification } from '../context/NotificationContext'
 
 const Login = ({setToken}) => {
 
+    const { show } = useNotification();
     const [email,setEmail] = useState('')
     const [password,setPassword] = useState('')
 
@@ -15,12 +16,12 @@ const Login = ({setToken}) => {
             if (response.data.success) {
                 setToken(response.data.token)
             } else {
-                toast.error(response.data.message)
+                show(response.data.message, 'error')
             }
              
         } catch (error) {
             console.log(error);
-            toast.error(error.message)
+            show(error.message, 'error')
         }
     }
 

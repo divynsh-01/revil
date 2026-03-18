@@ -1,7 +1,7 @@
 import { createContext, useEffect, useState } from "react";
-import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import axios from 'axios'
+import { useNotification } from "./NotificationContext";
 
 export const ShopContext = createContext();
 
@@ -82,7 +82,7 @@ const ShopContextProvider = (props) => {
                     await axios.post(backendUrl + '/api/cart/add', { itemId, variantId }, { headers: { token } })
                 } catch (error) {
                     console.log(error);
-                    toast.error(error.message);
+                    show(error.message, 'error');
                 }
             }
 
@@ -96,7 +96,7 @@ const ShopContextProvider = (props) => {
 
             // Validate color selection if product has colors
             if (product && product.colors && product.colors.length > 0 && !color) {
-                toast.error('Select Product Color');
+                show('Select Product Color', 'error');
                 return;
             }
 
@@ -124,7 +124,7 @@ const ShopContextProvider = (props) => {
                     await axios.post(backendUrl + '/api/cart/add', { itemId, size, color }, { headers: { token } })
                 } catch (error) {
                     console.log(error);
-                    toast.error(error.message);
+                    show(error.message, 'error');
                 }
             }
         }
@@ -196,7 +196,7 @@ const ShopContextProvider = (props) => {
 
             } catch (error) {
                 console.log(error);
-                toast.error(error.message);
+                show(error.message, 'error');
             }
         }
 
@@ -256,15 +256,12 @@ const ShopContextProvider = (props) => {
             if (response.data.success) {
                 setProducts(response.data.products.reverse())
             } else {
-                toast.error(response.data.message)
-            }
+                    show(response.data.message, 'error')
+                }
 
-        } catch (error) {
-            console.log(error)
-            toast.error(error.message)
-        } finally {
-            setLoading(false);
-        }
+            } catch (error) {
+                console.log(error)
+                show(error.message, 'error')
     }
 
     const getUserWishlist = async (token) => {
@@ -281,7 +278,7 @@ const ShopContextProvider = (props) => {
 
     const addToWishlist = async (productId) => {
         if (!token) {
-            toast.error('Please login to add to wishlist');
+            show('Please login to add to wishlist', 'error');
             navigate('/login');
             return;
         }
@@ -290,13 +287,13 @@ const ShopContextProvider = (props) => {
             const response = await axios.post(backendUrl + '/api/wishlist/add', { productId }, { headers: { token } })
             if (response.data.success) {
                 setWishlist(prev => [...prev, productId]);
-                toast.success('Added to wishlist');
+                show('Added to wishlist', 'success');
             } else {
-                toast.error(response.data.message);
+                show(response.data.message, 'error');
             }
         } catch (error) {
             console.log(error)
-            toast.error(error.message)
+            show(error.message, 'error');
         }
     }
 
@@ -305,11 +302,11 @@ const ShopContextProvider = (props) => {
             const response = await axios.post(backendUrl + '/api/wishlist/remove', { productId }, { headers: { token } })
             if (response.data.success) {
                 setWishlist(prev => prev.filter(id => id !== productId));
-                toast.success('Removed from wishlist');
+                show('Removed from wishlist', 'success');
             }
         } catch (error) {
             console.log(error)
-            toast.error(error.message)
+            show(error.message, 'error');
         }
     }
 
@@ -341,7 +338,7 @@ const ShopContextProvider = (props) => {
             }
         } catch (error) {
             console.log(error)
-            toast.error(error.message)
+            show(error.message, 'error')
         }
     }
 

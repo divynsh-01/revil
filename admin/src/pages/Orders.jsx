@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import { backendUrl, currency } from '../App'
-import { toast } from 'react-toastify'
+import { useNotification } from '../context/NotificationContext'
 import { assets } from '../assets/assets'
 
 const Orders = ({ token }) => {
+  const { show } = useNotification();
 
   const [orders, setOrders] = useState([])
   const [showTracking, setShowTracking] = useState(null)
@@ -24,7 +25,7 @@ const Orders = ({ token }) => {
       }
     } catch (error) {
       console.log(error)
-      toast.error(error.message)
+      show(error.message, 'error')
     }
   }
 
@@ -39,10 +40,10 @@ const Orders = ({ token }) => {
       if (response.data.success) {
         setOrders(response.data.orders.reverse())
       } else {
-        toast.error(response.data.message)
+        show(response.data.message, 'error')
       }
     } catch (error) {
-      toast.error(error.message)
+      show(error.message, 'error')
     }
   }
 
@@ -54,7 +55,7 @@ const Orders = ({ token }) => {
       }
     } catch (error) {
       console.log(error)
-      toast.error(error.message)
+      show(error.message, 'error')
     }
   }
 
@@ -65,14 +66,14 @@ const Orders = ({ token }) => {
         { headers: { token } }
       )
       if (response.data.success) {
-        toast.success('Tracking information added')
+        show('Tracking information added', 'success')
         setShowTracking(null)
         setTrackingData({ courier: '', trackingId: '', trackingUrl: '' })
         await fetchAllOrders()
       }
     } catch (error) {
       console.log(error)
-      toast.error(error.message)
+      show(error.message, 'error')
     }
   }
 

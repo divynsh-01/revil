@@ -15,14 +15,11 @@ import Profile from './pages/Profile'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import SearchBar from './components/SearchBar'
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
 import Verify from './pages/Verify'
 
 const App = () => {
   return (
     <div className='w-full'>
-      <ToastContainer />
       <Navbar />
       <SearchBar />
       <div>

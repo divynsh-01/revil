@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { backendUrl } from '../App';
-import { toast } from 'react-toastify';
+import { useNotification } from '../context/NotificationContext';
 
 const Colors = ({ token }) => {
+    const { show } = useNotification();
     const [colors, setColors] = useState([]);
     const [newColor, setNewColor] = useState("");
     const [newHex, setNewHex] = useState("");
@@ -17,7 +18,7 @@ const Colors = ({ token }) => {
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 
@@ -34,16 +35,16 @@ const Colors = ({ token }) => {
             );
 
             if (response.data.success) {
-                toast.success('Color added successfully');
+                show('Color added successfully', 'success');
                 setNewColor("");
                 setNewHex("");
                 fetchColors();
             } else {
-                toast.error(response.data.message);
+                show(response.data.message, 'error');
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 
@@ -55,14 +56,14 @@ const Colors = ({ token }) => {
                 { headers: { token } }
             );
             if (response.data.success) {
-                toast.success('Color deleted successfully');
+                show('Color deleted successfully', 'success');
                 fetchColors();
             } else {
-                toast.error(response.data.message);
+                show(response.data.message, 'error');
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 

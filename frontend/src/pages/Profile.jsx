@@ -1,13 +1,14 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { ShopContext } from '../context/ShopContext';
+import { useNotification } from '../context/NotificationContext';
 import Title from '../components/Title';
 import Loader from '../components/Loader';
 import axios from 'axios';
-import { toast } from 'react-toastify';
 
 const Profile = () => {
 
     const { backendUrl, token, navigate } = useContext(ShopContext);
+    const { show } = useNotification();
 
     const [userData, setUserData] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
@@ -46,11 +47,11 @@ const Profile = () => {
                     phone: response.data.user.phone || ''
                 });
             } else {
-                toast.error(response.data.message);
+                show(response.data.message, 'error');
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 
@@ -69,16 +70,13 @@ const Profile = () => {
             if (response.data.success) {
                 setUserData(response.data.user);
                 setIsEditing(false);
-                toast.success(response.data.message);
-            } else {
-                toast.error(response.data.message);
-            }
-        } catch (error) {
-            console.log(error);
-            toast.error(error.message);
-        } finally {
-            setLoading(false);
-        }
+                    show(response.data.message, 'success');
+                } else {
+                    show(response.data.message, 'error');
+                }
+            } catch (error) {
+                console.log(error);
+                show(error.message, 'error');
     };
 
     // Change password
@@ -86,12 +84,12 @@ const Profile = () => {
         e.preventDefault();
 
         if (passwordData.newPassword !== passwordData.confirmPassword) {
-            toast.error('Passwords do not match');
+            show('Passwords do not match', 'error');
             return;
         }
 
         if (passwordData.newPassword.length < 8) {
-            toast.error('Password must be at least 8 characters');
+            show('Password must be at least 8 characters', 'error');
             return;
         }
 
@@ -108,16 +106,15 @@ const Profile = () => {
             );
 
             if (response.data.success) {
-                toast.success(response.data.message);
-                setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
-                setIsChangingPassword(false);
-            } else {
-                toast.error(response.data.message);
-            }
-        } catch (error) {
-            console.log(error);
-            toast.error(error.message);
-        } finally {
+                    show(response.data.message, 'success');
+                    setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+                    setIsChangingPassword(false);
+                } else {
+                    show(response.data.message, 'error');
+                }
+            } catch (error) {
+                console.log(error);
+                show(error.message, 'error');
             setLoading(false);
         }
     };

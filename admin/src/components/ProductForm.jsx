@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react'
 import { assets } from '../assets/assets'
 import axios from 'axios'
 import { backendUrl } from '../App'
-import { toast } from 'react-toastify'
+import { useNotification } from '../context/NotificationContext'
 import { useNavigate } from 'react-router-dom'
 
 const ProductForm = ({ token, initialData, isEdit }) => {
 
     const navigate = useNavigate();
+    const { show } = useNotification();
 
     // Color-specific images: { color: [file1, file2, ...], "Black": [img1, img2], "White": [img3] }
     const [colorImages, setColorImages] = useState({});
@@ -107,11 +108,11 @@ const ProductForm = ({ token, initialData, isEdit }) => {
             if (response.data.success) {
                 setCatList(response.data.categories)
             } else {
-                toast.error(response.data.message)
+                show(response.data.message, 'error')
             }
         } catch (error) {
             console.log(error)
-            toast.error(error.message)
+            show(error.message, 'error')
         }
     }
 
@@ -121,11 +122,11 @@ const ProductForm = ({ token, initialData, isEdit }) => {
             if (response.data.success) {
                 setSubCatList(response.data.subCategories)
             } else {
-                toast.error(response.data.message)
+                show(response.data.message, 'error')
             }
         } catch (error) {
             console.log(error)
-            toast.error(error.message)
+            show(error.message, 'error')
         }
     }
 
@@ -135,11 +136,11 @@ const ProductForm = ({ token, initialData, isEdit }) => {
             if (response.data.success) {
                 setAvailableColors(response.data.colors)
             } else {
-                toast.error(response.data.message)
+                show(response.data.message, 'error')
             }
         } catch (error) {
             console.log(error)
-            toast.error(error.message)
+            show(error.message, 'error')
         }
     }
 
@@ -233,7 +234,7 @@ const ProductForm = ({ token, initialData, isEdit }) => {
             const response = await axios.post(backendUrl + endpoint, formData, { headers: { token } })
 
             if (response.data.success) {
-                toast.success(response.data.message)
+                show(response.data.message, 'success')
                 if (isEdit) {
                     navigate('/list');
                 } else {
@@ -254,12 +255,12 @@ const ProductForm = ({ token, initialData, isEdit }) => {
                     setGeneralImages([])
                 }
             } else {
-                toast.error(response.data.message)
+                show(response.data.message, 'error')
             }
 
         } catch (error) {
             console.log(error);
-            toast.error(error.message)
+            show(error.message, 'error')
         } finally {
             setIsSubmitting(false);
         }

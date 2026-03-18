@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { backendUrl } from '../App';
-import { toast } from 'react-toastify';
+import { useNotification } from '../context/NotificationContext';
 
 const SubCategories = ({ token }) => {
     const [subCategories, setSubCategories] = useState([]);
     const [categories, setCategories] = useState([]);
+    const { show } = useNotification();
     const [showForm, setShowForm] = useState(false);
     const [isIdManual, setIsIdManual] = useState(false);
     const [editingId, setEditingId] = useState(null);
@@ -39,7 +40,7 @@ const SubCategories = ({ token }) => {
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 
@@ -52,7 +53,7 @@ const SubCategories = ({ token }) => {
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 
@@ -90,11 +91,11 @@ const SubCategories = ({ token }) => {
                     { headers: { token } }
                 );
                 if (response.data.success) {
-                    toast.success('Sub-Category updated successfully');
+                    show('Sub-Category updated successfully', 'success');
                     fetchSubCategories();
                     resetForm();
                 } else {
-                    toast.error(response.data.message);
+                    show(response.data.message, 'error');
                 }
             } else {
                 // Add
@@ -103,16 +104,16 @@ const SubCategories = ({ token }) => {
                     { headers: { token } }
                 );
                 if (response.data.success) {
-                    toast.success('Sub-Category added successfully');
+                    show('Sub-Category added successfully', 'success');
                     fetchSubCategories();
                     resetForm();
                 } else {
-                    toast.error(response.data.message);
+                    show(response.data.message, 'error');
                 }
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 
@@ -137,14 +138,14 @@ const SubCategories = ({ token }) => {
                 { headers: { token } }
             );
             if (response.data.success) {
-                toast.success('Sub-Category deleted successfully');
+                show('Sub-Category deleted successfully', 'success');
                 fetchSubCategories();
             } else {
-                toast.error(response.data.message);
+                show(response.data.message, 'error');
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 

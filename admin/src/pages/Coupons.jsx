@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { backendUrl } from '../App';
-import { toast } from 'react-toastify';
+import { useNotification } from '../context/NotificationContext';
 
 const Coupons = ({ token }) => {
+    const { show } = useNotification();
     const [coupons, setCoupons] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [editingCoupon, setEditingCoupon] = useState(null);
@@ -31,7 +32,7 @@ const Coupons = ({ token }) => {
             }
         } catch (error) {
             console.log(error);
-            toast.error('Failed to fetch coupons');
+            show('Failed to fetch coupons', 'error');
         }
     }
 
@@ -56,15 +57,15 @@ const Coupons = ({ token }) => {
             const response = await axios[method](url, formData, { headers: { token } });
 
             if (response.data.success) {
-                toast.success(response.data.message);
+                show(response.data.message, 'success');
                 fetchCoupons();
                 resetForm();
             } else {
-                toast.error(response.data.message);
+                show(response.data.message, 'error');
             }
         } catch (error) {
             console.log(error);
-            toast.error('Operation failed');
+            show('Operation failed', 'error');
         }
     }
 
@@ -89,12 +90,12 @@ const Coupons = ({ token }) => {
         try {
             const response = await axios.delete(`${backendUrl}/api/coupon/delete/${id}`, { headers: { token } });
             if (response.data.success) {
-                toast.success(response.data.message);
+                show(response.data.message, 'success');
                 fetchCoupons();
             }
         } catch (error) {
             console.log(error);
-            toast.error('Failed to delete coupon');
+            show('Failed to delete coupon', 'error');
         }
     }
 
@@ -102,12 +103,12 @@ const Coupons = ({ token }) => {
         try {
             const response = await axios.put(`${backendUrl}/api/coupon/toggle/${id}`, {}, { headers: { token } });
             if (response.data.success) {
-                toast.success(response.data.message);
+                show(response.data.message, 'success');
                 fetchCoupons();
             }
         } catch (error) {
             console.log(error);
-            toast.error('Failed to toggle status');
+            show('Failed to toggle status', 'error');
         }
     }
 

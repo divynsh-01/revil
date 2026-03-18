@@ -14,8 +14,7 @@ import Edit from './pages/Edit'
 import Dashboard from './pages/Dashboard'
 import Carousel from './pages/Carousel'
 import Login from './components/Login'
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { NotificationProvider } from './context/NotificationContext'
 
 export const backendUrl = import.meta.env.VITE_BACKEND_URL
 export const currency = '$'
@@ -29,34 +28,35 @@ const App = () => {
   }, [token])
 
   return (
-    <div className='bg-gray-50 min-h-screen'>
-      <ToastContainer />
-      {token === ""
-        ? <Login setToken={setToken} />
-        : <>
-          <Navbar setToken={setToken} />
-          <hr />
-          <div className='flex w-full'>
-            <Sidebar />
-            <div className='w-[70%] mx-auto ml-[max(5vw,25px)] my-8 text-gray-600 text-base'>
-              <Routes>
-                <Route path='/' element={<Dashboard token={token} />} />
-                <Route path='/add' element={<Add token={token} />} />
-                <Route path='/list' element={<List token={token} />} />
-                <Route path='/edit/:productId' element={<Edit token={token} />} />
-                <Route path='/orders' element={<Orders token={token} />} />
-                <Route path='/categories' element={<Categories token={token} />} />
-                <Route path='/sub-categories' element={<SubCategories token={token} />} />
-                <Route path='/colors' element={<Colors token={token} />} />
-                <Route path='/coupons' element={<Coupons token={token} />} />
-                <Route path='/users' element={<Users token={token} />} />
-                <Route path='/carousel' element={<Carousel token={token} />} />
-              </Routes>
+    <NotificationProvider>
+      <div className='bg-gray-50 min-h-screen'>
+        {token === ""
+          ? <Login setToken={setToken} />
+          : <>
+            <Navbar setToken={setToken} />
+            <hr />
+            <div className='flex w-full'>
+              <Sidebar />
+              <div className='w-[70%] mx-auto ml-[max(5vw,25px)] my-8 text-gray-600 text-base'>
+                <Routes>
+                  <Route path='/' element={<Dashboard token={token} />} />
+                  <Route path='/add' element={<Add token={token} />} />
+                  <Route path='/list' element={<List token={token} />} />
+                  <Route path='/edit/:productId' element={<Edit token={token} />} />
+                  <Route path='/orders' element={<Orders token={token} />} />
+                  <Route path='/categories' element={<Categories token={token} />} />
+                  <Route path='/sub-categories' element={<SubCategories token={token} />} />
+                  <Route path='/colors' element={<Colors token={token} />} />
+                  <Route path='/coupons' element={<Coupons token={token} />} />
+                  <Route path='/users' element={<Users token={token} />} />
+                  <Route path='/carousel' element={<Carousel token={token} />} />
+                </Routes>
+              </div>
             </div>
-          </div>
-        </>
-      }
-    </div>
+          </>
+        }
+      </div>
+    </NotificationProvider>
   )
 }
 

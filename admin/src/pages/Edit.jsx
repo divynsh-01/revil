@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import { backendUrl } from '../App'
-import { toast } from 'react-toastify'
+import { useNotification } from '../context/NotificationContext'
 import { useParams } from 'react-router-dom'
 import ProductForm from '../components/ProductForm'
 
 const Edit = ({ token }) => {
 
     const { productId } = useParams()
+    const { show } = useNotification();
     const [productData, setProductData] = useState(null)
 
     useEffect(() => {
@@ -17,11 +18,11 @@ const Edit = ({ token }) => {
                 if (response.data.success) {
                     setProductData(response.data.product)
                 } else {
-                    toast.error(response.data.message)
+                    show(response.data.message, 'error')
                 }
             } catch (error) {
                 console.log(error)
-                toast.error(error.message)
+                show(error.message, 'error')
             }
         }
 

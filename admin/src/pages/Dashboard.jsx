@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react'
 import { assets } from '../assets/assets'
 import axios from 'axios'
 import { backendUrl, currency } from '../App'
-import { toast } from 'react-toastify'
+import { useNotification } from '../context/NotificationContext'
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 const Dashboard = ({ token }) => {
+    const { show } = useNotification();
 
     const [stats, setStats] = useState({
         totalOrders: 0,
@@ -22,11 +23,11 @@ const Dashboard = ({ token }) => {
             if (response.data.success) {
                 setStats(response.data.stats)
             } else {
-                toast.error(response.data.message)
+                show(response.data.message, 'error')
             }
         } catch (error) {
             console.log(error)
-            toast.error(error.message)
+            show(error.message, 'error')
         }
     }
 

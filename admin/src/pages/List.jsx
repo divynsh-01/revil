@@ -1,9 +1,10 @@
 import axios from 'axios'
 import React, { useEffect, useState } from 'react'
 import { backendUrl, currency } from '../App'
-import { toast } from 'react-toastify'
+import { useNotification } from '../context/NotificationContext'
 
 const List = ({ token }) => {
+  const { show } = useNotification();
 
   const [list, setList] = useState([])
   const [categories, setCategories] = useState([])
@@ -19,7 +20,7 @@ const List = ({ token }) => {
         setCategories(response.data.categories)
       }
     } catch (error) {
-      toast.error(error.message)
+      show(error.message, 'error')
     }
   }
 
@@ -30,7 +31,7 @@ const List = ({ token }) => {
         setSubCategories(response.data.subCategories)
       }
     } catch (error) {
-      toast.error(error.message)
+      show(error.message, 'error')
     }
   }
 
@@ -42,12 +43,12 @@ const List = ({ token }) => {
         setList(response.data.products.reverse());
       }
       else {
-        toast.error(response.data.message)
+        show(response.data.message, 'error')
       }
 
     } catch (error) {
       console.log(error)
-      toast.error(error.message)
+      show(error.message, 'error')
     }
   }
 
@@ -57,15 +58,15 @@ const List = ({ token }) => {
       const response = await axios.post(backendUrl + '/api/product/remove', { id }, { headers: { token } })
 
       if (response.data.success) {
-        toast.success(response.data.message)
+        show(response.data.message, 'success')
         await fetchList();
       } else {
-        toast.error(response.data.message)
+        show(response.data.message, 'error')
       }
 
     } catch (error) {
       console.log(error)
-      toast.error(error.message)
+      show(error.message, 'error')
     }
   }
 

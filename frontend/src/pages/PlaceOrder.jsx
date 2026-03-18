@@ -3,13 +3,14 @@ import Title from '../components/Title'
 import CartTotal from '../components/CartTotal'
 import { assets } from '../assets/assets'
 import { ShopContext } from '../context/ShopContext'
+import { useNotification } from '../context/NotificationContext'
 import axios from 'axios'
-import { toast } from 'react-toastify'
 
 const PlaceOrder = () => {
 
     const [method, setMethod] = useState('cod');
     const { navigate, backendUrl, token, cartItems, setCartItems, getCartAmount, delivery_fee, products } = useContext(ShopContext);
+    const { show } = useNotification();
 
     const [addresses, setAddresses] = useState([]);
     const [selectedAddressId, setSelectedAddressId] = useState('');
@@ -58,7 +59,7 @@ const PlaceOrder = () => {
         try {
             const response = await axios.post(backendUrl + '/api/address/add', newAddress, { headers: { token } });
             if (response.data.success) {
-                toast.success('Address added successfully');
+                show('Address added successfully', 'success');
                 // Refresh addresses
                 const listResponse = await axios.post(backendUrl + '/api/address/list', {}, { headers: { token } });
                 if (listResponse.data.success) {
@@ -78,7 +79,7 @@ const PlaceOrder = () => {
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            show(error.message, 'error');
         }
     };
 
@@ -101,7 +102,7 @@ const PlaceOrder = () => {
                     }
                 } catch (error) {
                     console.log(error)
-                    toast.error(error)
+                    show(error, 'error')
                 }
             }
         }
@@ -113,7 +114,7 @@ const PlaceOrder = () => {
         event.preventDefault()
 
         if (!selectedAddressId && !showNewAddressForm) {
-            toast.error('Please select a delivery address');
+            show('Please select a delivery address', 'error');
             return;
         }
 
@@ -151,10 +152,10 @@ const PlaceOrder = () => {
                     const response = await axios.post(backendUrl + '/api/order/place', orderData, { headers: { token } })
                     if (response.data.success) {
                         setCartItems({})
-                        toast.success('Order placed successfully!')
+                        show('Order placed successfully!', 'success')
                         navigate('/orders')
                     } else {
-                        toast.error(response.data.message)
+                        show(response.data.message, 'error')
                     }
                     break;
 
@@ -164,7 +165,7 @@ const PlaceOrder = () => {
                         const { session_url } = responseStripe.data
                         window.location.replace(session_url)
                     } else {
-                        toast.error(responseStripe.data.message)
+                        show(responseStripe.data.message, 'error')
                     }
                     break;
 
@@ -181,7 +182,7 @@ const PlaceOrder = () => {
 
         } catch (error) {
             console.log(error)
-            toast.error(error.message)
+            show(error.message, 'error')
         }
     }
 
