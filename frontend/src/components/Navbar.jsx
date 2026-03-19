@@ -55,7 +55,11 @@ const Navbar = () => {
                 </button>
 
                 {/* Wishlist Icon - Hidden on mobile */}
-                <Link to='/wishlist' className='hidden sm:block relative transition-transform hover:scale-110 active:scale-95'>
+                <button
+                    onClick={() => navigate(token ? '/wishlist' : '/login')}
+                    className='hidden sm:block relative transition-transform hover:scale-110 active:scale-95'
+                    aria-label='Wishlist'
+                >
                     <svg className='w-5 h-5 cursor-pointer transition-colors hover:text-red-500' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
                         <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z' />
                     </svg>
@@ -64,7 +68,7 @@ const Navbar = () => {
                             {getWishlistCount()}
                         </span>
                     )}
-                </Link>
+                </button>
 
                 {/* Profile Dropdown - Hidden on mobile */}
                 <div className='hidden sm:block group relative'>
@@ -185,10 +189,9 @@ const Navbar = () => {
                         >
                             Search
                         </button>
-                        <NavLink
-                            onClick={() => setVisible(false)}
-                            className='py-4 px-6 border-b border-neutral-100 text-sm uppercase tracking-wider font-medium hover:bg-neutral-50 transition-colors'
-                            to='/wishlist'
+                        <button
+                            onClick={() => { setVisible(false); navigate(token ? '/wishlist' : '/login'); }}
+                            className='py-4 px-6 border-b border-neutral-100 text-sm uppercase tracking-wider font-medium hover:bg-neutral-50 transition-colors text-left w-full'
                         >
                             Wishlist
                             {getWishlistCount() > 0 && (
@@ -196,7 +199,7 @@ const Navbar = () => {
                                     {getWishlistCount()}
                                 </span>
                             )}
-                        </NavLink>
+                        </button>
 
                         {/* Profile Section */}
                         {token ? (

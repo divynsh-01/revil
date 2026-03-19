@@ -23,6 +23,8 @@ const ShopContextProvider = (props) => {
     const [wishlist, setWishlist] = useState([]);
     const [loading, setLoading] = useState(false);
     const [token, setToken] = useState('')
+    const [showLoginModal, setShowLoginModal] = useState(false);
+    const [pendingWishlistId, setPendingWishlistId] = useState(null);
     const navigate = useNavigate();
     const { show } = useNotification();
 
@@ -287,8 +289,8 @@ const ShopContextProvider = (props) => {
 
     const addToWishlist = async (productId) => {
         if (!token) {
-            show('Please login to add to wishlist', 'error');
-            navigate('/login');
+            setPendingWishlistId(productId);
+            setShowLoginModal(true);
             return;
         }
 
@@ -384,8 +386,10 @@ const ShopContextProvider = (props) => {
         getCartAmount, navigate, backendUrl,
         setToken, token,
         wishlist, addToWishlist, removeFromWishlist, getWishlistCount,
-        getBackendCartItems,  // For Cart.jsx to fetch backend cart
-        getUserCart  // For refreshing cart state after operations
+        getBackendCartItems,
+        getUserCart,
+        showLoginModal, setShowLoginModal,
+        pendingWishlistId, setPendingWishlistId,
     }
 
     return (
