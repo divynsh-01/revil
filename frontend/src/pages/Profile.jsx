@@ -70,13 +70,16 @@ const Profile = () => {
             if (response.data.success) {
                 setUserData(response.data.user);
                 setIsEditing(false);
-                    show(response.data.message, 'success');
-                } else {
-                    show(response.data.message, 'error');
-                }
-            } catch (error) {
-                console.log(error);
-                show(error.message, 'error');
+                show(response.data.message, 'success');
+            } else {
+                show(response.data.message, 'error');
+            }
+        } catch (error) {
+            console.log(error);
+            show(error.message, 'error');
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Change password
@@ -112,9 +115,10 @@ const Profile = () => {
                 } else {
                     show(response.data.message, 'error');
                 }
-            } catch (error) {
-                console.log(error);
-                show(error.message, 'error');
+        } catch (error) {
+            console.log(error);
+            show(error.message, 'error');
+        } finally {
             setLoading(false);
         }
     };

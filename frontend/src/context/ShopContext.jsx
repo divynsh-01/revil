@@ -12,12 +12,19 @@ const ShopContextProvider = (props) => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL
     const [search, setSearch] = useState('');
     const [showSearch, setShowSearch] = useState(false);
-    const [cartItems, setCartItems] = useState({});
+    const [cartItems, setCartItems] = useState(() => {
+        // Restore guest cart from localStorage on first render
+        try {
+            const saved = localStorage.getItem('guestCart');
+            return saved ? JSON.parse(saved) : {};
+        } catch { return {}; }
+    });
     const [products, setProducts] = useState([]);
     const [wishlist, setWishlist] = useState([]);
     const [loading, setLoading] = useState(false);
     const [token, setToken] = useState('')
     const navigate = useNavigate();
+    const { show } = useNotification();
 
     // Determine if a product has any stock available (across variants or legacy stock map)
     const isProductInStock = (product) => {
@@ -256,12 +263,14 @@ const ShopContextProvider = (props) => {
             if (response.data.success) {
                 setProducts(response.data.products.reverse())
             } else {
-                    show(response.data.message, 'error')
-                }
-
-            } catch (error) {
-                console.log(error)
-                show(error.message, 'error')
+                show(response.data.message, 'error')
+            }
+        } catch (error) {
+            console.log(error)
+            show(error.message, 'error')
+        } finally {
+            setLoading(false);
+        }
     }
 
     const getUserWishlist = async (token) => {
@@ -342,6 +351,13 @@ const ShopContextProvider = (props) => {
         }
     }
 
+    // Persist guest cart to localStorage; clear it when logged in
+    useEffect(() => {
+        if (!token) {
+            localStorage.setItem('guestCart', JSON.stringify(cartItems));
+        }
+    }, [cartItems, token]);
+
     useEffect(() => {
         getProductsData()
     }, [])
@@ -353,6 +369,8 @@ const ShopContextProvider = (props) => {
             getUserWishlist(localStorage.getItem('token'))
         }
         if (token) {
+            // Clear guest cart from localStorage when logged in
+            localStorage.removeItem('guestCart');
             getUserCart(token)
             getUserWishlist(token)
         }

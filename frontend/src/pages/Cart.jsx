@@ -7,27 +7,68 @@ import Loader from '../components/Loader';
 
 const Cart = () => {
 
-  const { currency, updateQuantity, navigate, getBackendCartItems, getUserCart, token } = useContext(ShopContext);
+  const { currency, updateQuantity, navigate, getBackendCartItems, getUserCart, token, cartItems, products } = useContext(ShopContext);
 
   const [cartData, setCartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
 
   useEffect(() => {
-    if (token) {
-      const fetchCartData = async () => {
-        setLoading(true);
+    const buildCart = async () => {
+      setLoading(true);
+      if (token) {
+        // Logged-in: fetch rich cart data (images, prices) from backend
         const backendCart = await getBackendCartItems();
         setCartData(backendCart);
-        setLoading(false);
-      };
-      fetchCartData();
-    } else if (!localStorage.getItem('token')) {
-      // If no token and no token in local storage, stop loading (guest or logged out)
+      } else {
+        // Guest: build display rows from local cartItems + products
+        const rows = [];
+        for (const productId in cartItems) {
+          const productInfo = products.find(p => p._id === productId);
+          if (!productInfo) continue;
+          for (const variantKey in cartItems[productId]) {
+            const qty = cartItems[productId][variantKey];
+            if (qty <= 0) continue;
+            const isVariantId = variantKey.length === 24 && !variantKey.includes('-');
+            if (isVariantId && productInfo.variants) {
+              const variant = productInfo.variants.find(v => v._id.toString() === variantKey);
+              rows.push({
+                productId,
+                variantId: variantKey,
+                title: productInfo.name,
+                image: productInfo.image?.[0] || '',
+                price: variant?.price ?? productInfo.discountPrice ?? productInfo.price ?? 0,
+                size: variant?.size || '',
+                color: variant?.color || '',
+                quantity: qty,
+                stock: variant?.stock ?? 100,
+              });
+            } else {
+              const parts = variantKey.split('-');
+              const size = parts[0];
+              const color = parts.length > 1 ? parts.slice(1).join('-') : null;
+              rows.push({
+                productId,
+                variantId: null,
+                title: productInfo.name,
+                image: productInfo.image?.[0] || '',
+                price: productInfo.discountPrice ?? productInfo.price ?? 0,
+                size,
+                color,
+                quantity: qty,
+                stock: 100,
+              });
+            }
+          }
+        }
+        setCartData(rows);
+      }
       setLoading(false);
-      setCartData([]); // Clear cart data
-    }
-  }, [token]);
+    };
+    // Only wait for products to load before showing guest cart
+    if (!token && products.length === 0) return;
+    buildCart();
+  }, [token, cartItems, products]);
 
   if (loading) {
     return <Loader />;
@@ -76,17 +117,21 @@ const Cart = () => {
                             onClick={async () => {
                               const key = item.variantId || (item.color ? `${item.size}-${item.color}` : item.size);
                               const uniqueId = item.productId + key;
-                              // Set specific loading state for this item
                               setActionLoading(uniqueId);
                               await updateQuantity(item.productId.toString(), key, 0);
-                              // Refresh local cart display
-                              const refreshedCart = await getBackendCartItems();
-                              setCartData(refreshedCart);
-                              // Refresh global cart state so CartTotal updates
                               if (token) {
+                                // Logged-in: refresh from backend
+                                const refreshedCart = await getBackendCartItems();
+                                setCartData(refreshedCart);
                                 await getUserCart(token);
+                              } else {
+                                // Guest: filter out the deleted item locally
+                                setCartData(prev => prev.filter(
+                                  ci => !(ci.productId === item.productId &&
+                                    (ci.variantId || (ci.color ? `${ci.size}-${ci.color}` : ci.size)) === key)
+                                ));
                               }
-                              setActionLoading(null); // Reset loading state
+                              setActionLoading(null);
                             }}
                             className='w-4 sm:w-5 cursor-pointer hover:scale-110 transition-transform'
                             src={assets.bin_icon}
