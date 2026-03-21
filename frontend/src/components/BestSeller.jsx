@@ -15,8 +15,8 @@ const BestSeller = () => {
   }, [inStockProducts])
 
   return (
-    <div className='my-20 px-4 sm:px-0'>
-      <div className='text-center mb-12'>
+    <div className='my-8 px-4 sm:px-0'>
+      <div className='text-center mb-8'>
         <Title text1={'BEST'} text2={'SELLERS'} />
         <p className='max-w-2xl mx-auto text-sm sm:text-base text-neutral-600 leading-relaxed'>
           Our most loved pieces. Customer favorites that never go out of style.

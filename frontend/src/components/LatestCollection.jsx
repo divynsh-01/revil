@@ -14,8 +14,8 @@ const LatestCollection = () => {
   }, [inStockProducts])
 
   return (
-    <div className='my-20 px-4 sm:px-0'>
-      <div className='text-center mb-12'>
+    <div className='mt-2 mb-8 px-4 sm:px-0'>
+      <div className='text-center mb-8'>
         <Title text1={'LATEST'} text2={'COLLECTIONS'} />
         <p className='max-w-2xl mx-auto text-sm sm:text-base text-neutral-600 leading-relaxed'>
           Discover our newest arrivals. Fresh styles, timeless pieces.

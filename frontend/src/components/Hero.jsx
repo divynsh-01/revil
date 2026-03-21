@@ -111,13 +111,13 @@ const Hero = () => {
     <div className='w-full overflow-hidden bg-white'>
 
       {/* Slider Container */}
-      <div className='relative w-full pb-14 group'>
+      <div className='relative w-full pb-2 group'>
 
         {/* Track - Truly Edge-to-Edge */}
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className='flex overflow-x-auto snap-x snap-mandatory gap-0 pb-10 hide-scrollbar'
+          className='flex overflow-x-auto snap-x snap-mandatory gap-0 pb-2 hide-scrollbar'
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; }`}</style>
@@ -126,7 +126,7 @@ const Hero = () => {
             <div
               key={slide._id || slide.id}
               data-slide="true"
-              className={`snap-start w-full md:w-[96vw] lg:w-[98vw] h-[50vh] sm:h-[65vh] lg:h-[75vh] min-h-[500px] flex-shrink-0 relative overflow-hidden bg-[#f3f1ed] group/card transition-all duration-1000 ease-out z-10 ${activeIndex === index ? 'opacity-100' : 'opacity-30 blur-[2px] pointer-events-none'}`}
+              className={`snap-start w-full md:w-[96vw] lg:w-[98vw] h-[50vh] sm:h-[65vh] lg:h-[55vh] min-h-[400px] flex-shrink-0 relative overflow-hidden bg-[#f3f1ed] group/card transition-all duration-1000 ease-out z-10 ${activeIndex === index ? 'opacity-100' : 'opacity-30 blur-[2px] pointer-events-none'}`}
             >
                 <img
                   className='absolute inset-0 w-full h-full object-cover object-left-top sm:object-top transition-transform duration-[2000ms] group-hover/card:scale-110'
@@ -149,12 +149,7 @@ const Hero = () => {
                         {slide.subtitle}
                       </p>
                     )}
-                    <Link
-                      to={slide.link}
-                      className={`inline-flex items-center justify-center px-12 py-5 bg-white text-black text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] rounded-full sm:opacity-0 group-hover/card:opacity-100 transition-all duration-700 hover:bg-black hover:text-white shadow-2xl scale-90 hover:scale-100 ${!slide.title && !slide.subtitle ? 'mt-10' : ''}`}
-                    >
-                      View Collection
-                    </Link>
+
                   </div>
                 </div>
             </div>
@@ -164,7 +159,7 @@ const Hero = () => {
         </div>
 
         {/* Dot Indicators */}
-        <div className='flex justify-center items-center gap-4 mb-10'>
+        <div className='flex justify-center items-center gap-4 mb-2'>
           {slides.map((_, index) => (
             <button
               key={index}

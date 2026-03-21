@@ -8,10 +8,10 @@ import NewsletterBox from '../components/NewsletterBox'
 const Home = () => {
   return (
     <div>
-      <div className='pt-6'>
+      <div className='pt-2'>
         <Hero />
       </div>
-      <div className='pt-10 px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
+      <div className='pt-0 px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
         <LatestCollection />
         <BestSeller />
         <OurPolicy />
