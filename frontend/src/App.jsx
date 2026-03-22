@@ -17,12 +17,14 @@ import Footer from './components/Footer'
 import SearchBar from './components/SearchBar'
 import Verify from './pages/Verify'
 import LoginModal from './components/LoginModal'
+import MiniCart from './components/MiniCart'
 
 const App = () => {
   return (
     <div className='w-full'>
       <Navbar />
       <LoginModal />
+      <MiniCart />
       <SearchBar />
       <div>
         <Routes>
