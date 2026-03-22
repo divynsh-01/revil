@@ -143,7 +143,6 @@ const ShopContextProvider = (props) => {
 
         setShowMiniCart(true);
     }
-    }
 
     const getCartCount = () => {
         let totalCount = 0;
