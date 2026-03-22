@@ -105,7 +105,6 @@ const Cart = () => {
                               {item.color && <p className='px-2 sm:px-3 sm:py-1 border bg-blue-50 text-blue-700'>{item.color}</p>}
                             </div>
                           </div>
-                          <p className='text-xs text-gray-500 mt-1'>Stock: {currentStock}</p>
                         </div>
                       </div>
 
@@ -203,8 +202,8 @@ const Cart = () => {
                           </div>
                           {/* Stock feedback */}
                           <p className='text-xs font-medium'>
-                            {currentStock < 5 ? (
-                              currentStock > 0 ? <span className="text-orange-500">Only {currentStock} left</span> : <span className="text-red-500">Out of Stock</span>
+                            {currentStock <= 10 ? (
+                            currentStock > 0 ? <span className="text-orange-500 text-xs font-medium">Only {currentStock} left</span> : <span className="text-red-500 text-xs font-medium uppercase tracking-wider">Out of Stock</span>
                             ) : null}
                           </p>
                         </div>

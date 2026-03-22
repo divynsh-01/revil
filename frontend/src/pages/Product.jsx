@@ -261,9 +261,6 @@ const Product = () => {
                         disabled={isOutOfStock && size}
                       >
                         {item}
-                        {stock > 0 && stock < 5 && size && (
-                          <span className='absolute -top-2 -right-2 bg-orange-500 text-white text-xs px-1 rounded'>{stock}</span>
-                        )}
                         {isOutOfStock && size && <span className='text-xs block mt-1'>Out</span>}
                       </button>
                     );
@@ -311,9 +308,6 @@ const Product = () => {
                       disabled={isOutOfStock && color}
                     >
                       {item}
-                      {stock > 0 && stock < 5 && color && (
-                        <span className='absolute -top-2 -right-2 bg-orange-500 text-white text-xs px-1 rounded'>{stock}</span>
-                      )}
                       {isOutOfStock && color && <span className='text-xs block mt-1'>Out</span>}
                     </button>
                   );
@@ -322,6 +316,44 @@ const Product = () => {
               {!color && productData.colors && productData.colors.length > 0 && (
                 <p className='text-sm text-gray-500'>💡 Select color first to see exact stock for each size</p>
               )}
+            </div>
+
+            {/* Availability Status */}
+            <div className='my-6'>
+              {(() => {
+                let currentStock = 0;
+                let isVariantSelected = false;
+
+                if (selectedVariant) {
+                  currentStock = selectedVariant.stock;
+                  isVariantSelected = true;
+                } else if (!productData.colors?.length && size) {
+                  // For products without colors, size is enough
+                  if (productData.variants && productData.variants.length > 0) {
+                    const v = productData.variants.find(v => v.size === size);
+                    currentStock = v ? v.stock : 0;
+                    isVariantSelected = !!v;
+                  } else if (productData.stockByVariant) {
+                    currentStock = productData.stockByVariant[size] || 0;
+                    isVariantSelected = true;
+                  }
+                }
+
+                if (!isVariantSelected) return null;
+
+                return (
+                  <div className='flex items-center gap-2 text-sm'>
+                    <p className='text-gray-600'>Availability:</p>
+                    {currentStock > 10 ? (
+                      <span className='text-green-600 font-medium'>In Stock</span>
+                    ) : currentStock > 0 ? (
+                      <span className='text-orange-500 font-medium italic'>Only {currentStock} left - order soon</span>
+                    ) : (
+                      <span className='text-red-500 font-medium uppercase tracking-wider'>Out of Stock</span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* NEW: Hide/Disable button if completely out of stock across all variants */}
