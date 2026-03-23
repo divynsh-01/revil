@@ -159,16 +159,18 @@ const Hero = () => {
         </div>
 
         {/* Dot Indicators */}
-        <div className='flex justify-center items-center gap-4 mb-2'>
-          {slides.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => scrollToIndex(index)}
-              className={`h-1.5 transition-all duration-500 rounded-full ${activeIndex === index ? 'w-12 bg-black' : 'w-1.5 bg-gray-300 hover:bg-black/50'}`}
-              aria-label={`Go to slide ${index + 1}`}
-            />
-          ))}
-        </div>
+        {slides.length > 1 && (
+          <div className='flex justify-center items-center gap-4 mb-2'>
+            {slides.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => scrollToIndex(index)}
+                className={`h-1.5 transition-all duration-500 rounded-full ${activeIndex === index ? 'w-12 bg-black' : 'w-1.5 bg-gray-300 hover:bg-black/50'}`}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
 
       </div>
     </div>

@@ -25,6 +25,7 @@ const ShopContextProvider = (props) => {
     const [token, setToken] = useState('')
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [pendingWishlistId, setPendingWishlistId] = useState(null);
+    const [showMiniCart, setShowMiniCart] = useState(false);
     const navigate = useNavigate();
     const { show } = useNotification();
 
@@ -95,6 +96,8 @@ const ShopContextProvider = (props) => {
                 }
             }
 
+            setShowMiniCart(true);
+
         } else {
             // OLD MODEL: Using size + color
             const size = sizeOrVariantId;
@@ -137,6 +140,8 @@ const ShopContextProvider = (props) => {
                 }
             }
         }
+
+        setShowMiniCart(true);
     }
 
     const getCartCount = () => {
@@ -390,6 +395,7 @@ const ShopContextProvider = (props) => {
         getUserCart,
         showLoginModal, setShowLoginModal,
         pendingWishlistId, setPendingWishlistId,
+        showMiniCart, setShowMiniCart,
     }
 
     return (
