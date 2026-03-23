@@ -86,7 +86,30 @@ const Cart = () => {
             </div>
             {
               cartData.length === 0 ? (
-                <p className='text-center text-gray-500 py-10'>Your cart is empty</p>
+                <div className='flex flex-col items-center justify-center py-16 gap-5'>
+                  {/* Shopping Bag SVG */}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="text-gray-800">
+                    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                    <line x1="3" y1="6" x2="21" y2="6"/>
+                    <path d="M16 10a4 4 0 0 1-8 0"/>
+                  </svg>
+                  <h2 className='text-xl font-bold tracking-widest text-gray-900 uppercase'>Your Bag is Empty</h2>
+                  <p className='text-sm text-gray-500'>Your cart is ready to roll, but it&apos;s feeling a bit empty without some stylish finds.</p>
+                  <div className='flex w-full max-w-md mt-2 gap-3'>
+                    <button
+                      onClick={() => navigate('/collection')}
+                      className='flex-1 bg-black text-white text-sm font-bold tracking-widest py-4 hover:bg-gray-800 transition-colors'
+                    >
+                      START SHOPPING
+                    </button>
+                    <button
+                      onClick={() => navigate('/wishlist')}
+                      className='flex-1 border border-black text-black text-sm font-bold tracking-widest py-4 hover:bg-gray-50 transition-colors'
+                    >
+                      ADD FROM WISHLIST
+                    </button>
+                  </div>
+                </div>
               ) : (
                 cartData.map((item, index) => {
                   const currentStock = item.stock || 100; // Default to 100 if not provided
@@ -215,12 +238,14 @@ const Cart = () => {
             }
           </div>
 
-          <div className='w-full lg:w-[450px]'>
-            <CartTotal />
-            <div className=' w-full text-end'>
-              <button onClick={() => navigate('/place-order')} className='bg-black text-white text-sm my-8 px-8 py-3'>PROCEED TO CHECKOUT</button>
+          {cartData.length > 0 && (
+            <div className='w-full lg:w-[450px]'>
+              <CartTotal />
+              <div className=' w-full text-end'>
+                <button onClick={() => navigate('/place-order')} className='bg-black text-white text-sm my-8 px-8 py-3'>PROCEED TO CHECKOUT</button>
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
 
