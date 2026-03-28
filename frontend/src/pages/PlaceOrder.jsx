@@ -32,6 +32,7 @@ const PlaceOrder = () => {
     const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
     const [availableCoupons, setAvailableCoupons] = useState([]);
     const [showCouponsList, setShowCouponsList] = useState(false);
+    const [couponMessage, setCouponMessage] = useState({ text: '', type: '' }); // type: 'success' | 'error'
 
     // Build minimal cart items list for server-side category/product enforcement
     const buildCartItemsPayload = () => {
@@ -291,12 +292,13 @@ const PlaceOrder = () => {
                             {/* Coupon input moved to checkout */}
                             <div className='mt-6'>
                                 {!appliedCoupon ? (
+                                    <>
                                     <div className='flex gap-2'>
                                         <input
                                             type='text'
                                             placeholder='Enter coupon code'
                                             value={couponCode}
-                                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                            onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponMessage({ text: '', type: '' }); }}
                                             className='border px-3 py-2 flex-1 text-sm uppercase'
                                             disabled={isApplyingCoupon}
                                         />
@@ -304,7 +306,7 @@ const PlaceOrder = () => {
                                             type='button'
                                             onClick={async () => {
                                                 if (!couponCode.trim()) {
-                                                    show('Please enter a coupon code', 'error');
+                                                    setCouponMessage({ text: 'Please enter a coupon code', type: 'error' });
                                                     return;
                                                 }
                                                 setIsApplyingCoupon(true);
@@ -321,13 +323,13 @@ const PlaceOrder = () => {
                                                     if (resp.data.success) {
                                                         setAppliedCoupon(resp.data.coupon);
                                                         setCouponDiscount(resp.data.coupon.discount);
-                                                        show(resp.data.message, 'success');
+                                                        setCouponMessage({ text: `✓ Coupon applied! You save ₹${resp.data.coupon.discount.toFixed(2)}`, type: 'success' });
                                                     } else {
-                                                        show(resp.data.message, 'error');
+                                                        setCouponMessage({ text: resp.data.message, type: 'error' });
                                                     }
                                                 } catch (err) {
                                                     console.log(err);
-                                                    show('Failed to validate coupon', 'error');
+                                                    setCouponMessage({ text: 'Failed to validate coupon', type: 'error' });
                                                 }
                                                 setIsApplyingCoupon(false);
                                             }}
@@ -346,11 +348,11 @@ const PlaceOrder = () => {
                                                         setAvailableCoupons(resp.data.coupons);
                                                         setShowCouponsList(s => !s);
                                                     } else {
-                                                        show(resp.data.message, 'error');
+                                                        setCouponMessage({ text: resp.data.message, type: 'error' });
                                                     }
                                                 } catch (err) {
                                                     console.log(err);
-                                                    show('Failed to fetch coupons', 'error');
+                                                    setCouponMessage({ text: 'Failed to fetch coupons', type: 'error' });
                                                 }
                                             }}
                                             className='border px-4 py-2 text-sm'
@@ -358,7 +360,13 @@ const PlaceOrder = () => {
                                             {showCouponsList ? 'HIDE COUPONS' : 'SHOW AVAILABLE'}
                                         </button>
                                     </div>
-                                ) : (
+                                    {/* Inline coupon feedback */}
+                                    {couponMessage.text && (
+                                        <p className={`text-xs mt-1 ${couponMessage.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                                            {couponMessage.text}
+                                        </p>
+                                    )}
+                                    </>) : (
                                     <div className='flex items-center justify-between bg-green-50 border border-green-200 px-4 py-2 mt-3'>
                                         <div>
                                             <p className='text-sm font-medium text-green-700'>
@@ -372,7 +380,7 @@ const PlaceOrder = () => {
                                         </div>
                                         <button
                                             type='button'
-                                            onClick={() => { setAppliedCoupon(null); setCouponCode(''); setCouponDiscount(0); }}
+                                            onClick={() => { setAppliedCoupon(null); setCouponCode(''); setCouponDiscount(0); setCouponMessage({ text: '', type: '' }); }}
                                             className='text-red-500 hover:text-red-700 font-bold'
                                         >
                                             ✕
