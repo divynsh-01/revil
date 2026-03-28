@@ -2,6 +2,7 @@ import express from 'express';
 import {
     validateCoupon,
     applyCoupon,
+    listAvailableCoupons,
     createCoupon,
     listCoupons,
     updateCoupon,
@@ -9,12 +10,14 @@ import {
     toggleCouponStatus
 } from '../controllers/couponController.js';
 import adminAuth from '../middleware/adminAuth.js';
+import authUser from '../middleware/auth.js';
 
 const couponRouter = express.Router();
 
 // User routes
-couponRouter.post('/validate', validateCoupon);
-couponRouter.post('/apply', applyCoupon);
+couponRouter.post('/validate', authUser, validateCoupon);
+couponRouter.post('/apply', authUser, applyCoupon);
+couponRouter.get('/available', authUser, listAvailableCoupons);
 
 // Admin routes
 couponRouter.post('/create', adminAuth, createCoupon);

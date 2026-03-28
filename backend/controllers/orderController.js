@@ -1,4 +1,5 @@
 import orderModel from "../models/orderModel.js";
+import couponModel from "../models/couponModel.js";
 import userModel from "../models/userModel.js";
 import cartModel from "../models/cartModel.js";
 import addressModel from "../models/addressModel.js";
@@ -35,6 +36,56 @@ const placeOrder = async (req, res) => {
         const address = await addressModel.findById(addressId);
         if (!address) {
             return res.json({ success: false, message: "Address not found" });
+        }
+
+        // If couponCode provided, validate and reserve usage atomically
+        const { couponCode } = req.body;
+        if (couponCode) {
+            const now = new Date();
+            // Basic coupon fetch and checks
+            let coupon = await couponModel.findOne({ code: couponCode.toUpperCase() });
+            if (!coupon) return res.json({ success: false, message: 'Invalid coupon code' });
+            if (!coupon.isActive) return res.json({ success: false, message: 'This coupon is no longer active' });
+            if (now > new Date(coupon.expiryDate)) return res.json({ success: false, message: 'This coupon has expired' });
+
+            // No global overall usage limit; per-user limits enforced below
+
+            // If per-user limits exist and we have a user, try to atomically increment per-user entry if exists
+            const userId = req.body.userId;
+            if (userId && coupon.perUserLimit) {
+                // Try incrementing existing user entry where their count is below perUserLimit
+                const incExisting = await couponModel.findOneAndUpdate(
+                    { _id: coupon._id, 'usesByUser': { $elemMatch: { userId: userId, count: { $lt: coupon.perUserLimit } } } },
+                    { $inc: { usedCount: 1, 'usesByUser.$.count': 1 } },
+                    { new: true }
+                );
+
+                if (incExisting) {
+                    coupon = incExisting;
+                } else {
+                    // If no existing entry could be incremented, attempt to push a new entry for this user (if they don't already exist)
+                    const pushNew = await couponModel.findOneAndUpdate(
+                        { _id: coupon._id, 'usesByUser.userId': { $ne: userId } },
+                        { $inc: { usedCount: 1 }, $push: { usesByUser: { userId: userId, count: 1 } } },
+                        { new: true }
+                    );
+
+                    if (pushNew) {
+                        coupon = pushNew;
+                    } else {
+                        return res.json({ success: false, message: `You have already used this coupon ${coupon.perUserLimit} time(s)` });
+                    }
+                }
+            } else {
+                // No per-user limit or no user - atomically increment overall usage
+                const updated = await couponModel.findOneAndUpdate(
+                    { _id: coupon._id },
+                    { $inc: { usedCount: 1 } },
+                    { new: true }
+                );
+                if (!updated) return res.json({ success: false, message: 'Failed to reserve coupon usage' });
+                coupon = updated;
+            }
         }
 
         // Calculate pricing

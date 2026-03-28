@@ -3,7 +3,7 @@ import couponModel from "../models/couponModel.js";
 // Validate coupon code
 const validateCoupon = async (req, res) => {
     try {
-        const { code, cartTotal, cartItems } = req.body;
+        const { code, cartTotal, cartItems, userId } = req.body;
 
         // Find coupon
         const coupon = await couponModel.findOne({ code: code.toUpperCase() });
@@ -22,16 +22,21 @@ const validateCoupon = async (req, res) => {
             return res.json({ success: false, message: "This coupon has expired" });
         }
 
-        // Check usage limit
-        if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
-            return res.json({ success: false, message: "This coupon has reached its usage limit" });
+        // (No global overall usage limit) -- rely on per-user limits only
+
+        // Check per-user usage limit (requires authenticated user)
+        if (userId && coupon.perUserLimit) {
+            const userEntry = coupon.usesByUser.find(u => u.userId?.toString() === userId?.toString());
+            if (userEntry && userEntry.count >= coupon.perUserLimit) {
+                return res.json({ success: false, message: `You have already used this coupon ${coupon.perUserLimit} time(s)` });
+            }
         }
 
         // Check minimum order value
         if (cartTotal < coupon.minOrderValue) {
             return res.json({
                 success: false,
-                message: `Minimum order value of $${coupon.minOrderValue} required`
+                message: `Minimum order value of ₹${coupon.minOrderValue} required`
             });
         }
 
@@ -69,7 +74,7 @@ const validateCoupon = async (req, res) => {
 // Apply coupon (increment usage count)
 const applyCoupon = async (req, res) => {
     try {
-        const { code } = req.body;
+        const { code, userId } = req.body;
 
         const coupon = await couponModel.findOne({ code: code.toUpperCase() });
 
@@ -77,7 +82,22 @@ const applyCoupon = async (req, res) => {
             return res.json({ success: false, message: "Invalid coupon code" });
         }
 
-        // Increment usage count
+        // (No global overall usage limit) -- rely on per-user limits only
+
+        // Check and update per-user usage
+        if (userId && coupon.perUserLimit) {
+            const userIndex = coupon.usesByUser.findIndex(u => u.userId?.toString() === userId?.toString());
+            if (userIndex !== -1) {
+                if (coupon.usesByUser[userIndex].count >= coupon.perUserLimit) {
+                    return res.json({ success: false, message: `You have already used this coupon ${coupon.perUserLimit} time(s)` });
+                }
+                coupon.usesByUser[userIndex].count += 1;
+            } else {
+                coupon.usesByUser.push({ userId, count: 1 });
+            }
+        }
+
+        // Increment overall usage count
         coupon.usedCount += 1;
         await coupon.save();
 
@@ -94,7 +114,7 @@ const createCoupon = async (req, res) => {
     try {
         const {
             code, type, value, minOrderValue, maxDiscount,
-            expiryDate, usageLimit, applicableCategories,
+            expiryDate, perUserLimit, applicableCategories,
             applicableProducts, description
         } = req.body;
 
@@ -111,7 +131,7 @@ const createCoupon = async (req, res) => {
             minOrderValue: minOrderValue || 0,
             maxDiscount: maxDiscount || null,
             expiryDate,
-            usageLimit: usageLimit || null,
+            perUserLimit: perUserLimit || null,
             applicableCategories: applicableCategories || [],
             applicableProducts: applicableProducts || [],
             description: description || ''
@@ -203,6 +223,64 @@ const toggleCouponStatus = async (req, res) => {
     }
 }
 
+// List available coupons for a user (frontend)
+const listAvailableCoupons = async (req, res) => {
+    try {
+        const userId = req.body.userId;
+        const cartTotal = Number(req.query.cartTotal) || 0;
+        const now = new Date();
+
+        const coupons = await couponModel.find({ isActive: true, expiryDate: { $gt: now } }).sort({ createdAt: -1 });
+
+        const result = coupons.map(coupon => {
+            let eligible = true;
+            let reason = '';
+
+            if (coupon.perUserLimit) {
+                const userEntry = coupon.usesByUser.find(u => u.userId?.toString() === userId?.toString());
+                if (userEntry && userEntry.count >= coupon.perUserLimit) {
+                    eligible = false;
+                    reason = `You have already used this coupon ${coupon.perUserLimit} time(s)`;
+                }
+            }
+
+            if (cartTotal < coupon.minOrderValue) {
+                eligible = false;
+                reason = `Minimum order value ₹${coupon.minOrderValue} required`;
+            }
+
+            // preview discount
+            let discount = 0;
+            if (coupon.type === 'percentage') {
+                discount = (cartTotal * coupon.value) / 100;
+                if (coupon.maxDiscount) discount = Math.min(discount, coupon.maxDiscount);
+            } else {
+                discount = coupon.value;
+            }
+            discount = Math.min(discount, cartTotal);
+
+            return {
+                _id: coupon._id,
+                code: coupon.code,
+                type: coupon.type,
+                value: coupon.value,
+                minOrderValue: coupon.minOrderValue,
+                maxDiscount: coupon.maxDiscount,
+                perUserLimit: coupon.perUserLimit,
+                usedCount: coupon.usedCount,
+                eligible,
+                reason,
+                previewDiscount: discount
+            };
+        });
+
+        res.json({ success: true, coupons: result });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: error.message });
+    }
+}
+
 export {
     validateCoupon,
     applyCoupon,
@@ -211,4 +289,6 @@ export {
     updateCoupon,
     deleteCoupon,
     toggleCouponStatus
+    , listAvailableCoupons
 };
+

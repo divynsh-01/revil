@@ -6,13 +6,10 @@ import axios from 'axios';
 
 const CartTotal = () => {
 
-  const { currency, delivery_fee, getCartAmount, backendUrl, cartItems } = useContext(ShopContext);
+  const { currency, delivery_fee, getCartAmount, backendUrl, cartItems, token } = useContext(ShopContext);
   const { show } = useNotification();
 
-  const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState(null);
-  const [couponDiscount, setCouponDiscount] = useState(0);
-  const [isApplying, setIsApplying] = useState(false);
+  
   const [cartTotal, setCartTotal] = useState(0);
 
   // Calculate cart total (async)
@@ -24,41 +21,9 @@ const CartTotal = () => {
     fetchCartTotal();
   }, [cartItems, getCartAmount]); // Recalculate when cart changes
 
-  const finalTotal = cartTotal === 0 ? 0 : cartTotal + delivery_fee - couponDiscount;
+  const finalTotal = cartTotal === 0 ? 0 : cartTotal + delivery_fee;
 
-  const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) {
-      show('Please enter a coupon code', 'error');
-      return;
-    }
-
-    setIsApplying(true);
-    try {
-      const response = await axios.post(backendUrl + '/api/coupon/validate', {
-        code: couponCode,
-        cartTotal: cartTotal
-      });
-
-      if (response.data.success) {
-        setAppliedCoupon(response.data.coupon);
-        setCouponDiscount(response.data.coupon.discount);
-        show(response.data.message, 'success');
-      } else {
-        show(response.data.message, 'error');
-      }
-    } catch (error) {
-      console.log(error);
-      show('Failed to apply coupon', 'error');
-    }
-    setIsApplying(false);
-  }
-
-  const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponDiscount(0);
-    setCouponCode('');
-    show('Coupon removed', 'info');
-  }
+  
 
   return (
     <div className='w-full'>
@@ -78,64 +43,13 @@ const CartTotal = () => {
         </div>
         <hr />
 
-        {/* Coupon Discount */}
-        {appliedCoupon && (
-          <>
-            <div className='flex justify-between text-green-600'>
-              <p>Coupon Discount ({appliedCoupon.code})</p>
-              <p>- {currency} {couponDiscount.toFixed(2)}</p>
-            </div>
-            <hr />
-          </>
-        )}
-
         <div className='flex justify-between'>
           <b>Total</b>
           <b>{currency} {finalTotal.toFixed(2)}</b>
         </div>
       </div>
 
-      {/* Coupon Input */}
-      <div className='mt-6'>
-        {!appliedCoupon ? (
-          <div className='flex gap-2'>
-            <input
-              type='text'
-              placeholder='Enter coupon code'
-              value={couponCode}
-              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-              className='border px-3 py-2 flex-1 text-sm uppercase'
-              disabled={isApplying}
-            />
-            <button
-              onClick={handleApplyCoupon}
-              disabled={isApplying}
-              className='bg-black text-white px-6 py-2 text-sm hover:bg-gray-800 disabled:bg-gray-400'
-            >
-              {isApplying ? 'APPLYING...' : 'APPLY'}
-            </button>
-          </div>
-        ) : (
-          <div className='flex items-center justify-between bg-green-50 border border-green-200 px-4 py-2'>
-            <div>
-              <p className='text-sm font-medium text-green-700'>
-                Coupon Applied: {appliedCoupon.code}
-              </p>
-              <p className='text-xs text-green-600'>
-                {appliedCoupon.type === 'percentage'
-                  ? `${appliedCoupon.value}% off`
-                  : `₹${appliedCoupon.value} off`}
-              </p>
-            </div>
-            <button
-              onClick={handleRemoveCoupon}
-              className='text-red-500 hover:text-red-700 font-bold'
-            >
-              ✕
-            </button>
-          </div>
-        )}
-      </div>
+      {/* Coupon is applied on checkout page now */}
     </div>
   )
 }

@@ -15,8 +15,8 @@ const Coupons = ({ token }) => {
         value: '',
         minOrderValue: '',
         maxDiscount: '',
+        perUserLimit: '',
         expiryDate: '',
-        usageLimit: '',
         description: ''
     });
 
@@ -77,8 +77,8 @@ const Coupons = ({ token }) => {
             value: coupon.value,
             minOrderValue: coupon.minOrderValue,
             maxDiscount: coupon.maxDiscount || '',
+            perUserLimit: coupon.perUserLimit || '',
             expiryDate: coupon.expiryDate.split('T')[0],
-            usageLimit: coupon.usageLimit || '',
             description: coupon.description || ''
         });
         setShowForm(true);
@@ -120,7 +120,6 @@ const Coupons = ({ token }) => {
             minOrderValue: '',
             maxDiscount: '',
             expiryDate: '',
-            usageLimit: '',
             description: ''
         });
         setEditingCoupon(null);
@@ -155,6 +154,8 @@ const Coupons = ({ token }) => {
                     )}
                 </button>
             </div>
+
+                        
 
             {/* Create/Edit Form */}
             {showForm && (
@@ -195,13 +196,13 @@ const Coupons = ({ token }) => {
                                 className='border-2 border-gray-300 rounded-lg px-4 py-2.5 w-full focus:border-blue-500 focus:outline-none transition-colors'
                             >
                                 <option value='percentage'>Percentage (%)</option>
-                                <option value='fixed'>Fixed Amount ($)</option>
+                                <option value='fixed'>Fixed Amount (₹)</option>
                             </select>
                         </div>
 
                         <div>
                             <label className='block text-sm font-semibold mb-2 text-gray-700'>
-                                Discount Value * {formData.type === 'percentage' ? '(%)' : '($)'}
+                                Discount Value * {formData.type === 'percentage' ? '(%)' : '(₹)'}
                             </label>
                             <input
                                 type='number'
@@ -217,7 +218,7 @@ const Coupons = ({ token }) => {
                         </div>
 
                         <div>
-                            <label className='block text-sm font-semibold mb-2 text-gray-700'>Min Order Value ($)</label>
+                            <label className='block text-sm font-semibold mb-2 text-gray-700'>Min Order Value (₹)</label>
                             <input
                                 type='number'
                                 name='minOrderValue'
@@ -232,7 +233,7 @@ const Coupons = ({ token }) => {
 
                         {formData.type === 'percentage' && (
                             <div>
-                                <label className='block text-sm font-semibold mb-2 text-gray-700'>Max Discount Cap ($)</label>
+                                <label className='block text-sm font-semibold mb-2 text-gray-700'>Max Discount Cap (₹)</label>
                                 <input
                                     type='number'
                                     name='maxDiscount'
@@ -259,16 +260,17 @@ const Coupons = ({ token }) => {
                         </div>
 
                         <div>
-                            <label className='block text-sm font-semibold mb-2 text-gray-700'>Usage Limit</label>
+                            <label className='block text-sm font-semibold mb-2 text-gray-700'>Usage Limit per User</label>
                             <input
                                 type='number'
-                                name='usageLimit'
-                                value={formData.usageLimit}
+                                name='perUserLimit'
+                                value={formData.perUserLimit}
                                 onChange={handleInputChange}
-                                min='1'
+                                min='0'
                                 className='border-2 border-gray-300 rounded-lg px-4 py-2.5 w-full focus:border-blue-500 focus:outline-none transition-colors'
                                 placeholder='Unlimited'
                             />
+                            <p className='text-xs text-gray-500 mt-1'>Number of times a single user can use this coupon. Leave blank for unlimited.</p>
                         </div>
 
                         <div className='md:col-span-2'>
@@ -314,7 +316,7 @@ const Coupons = ({ token }) => {
                                 <th className='text-left p-4 font-semibold text-gray-700'>Type</th>
                                 <th className='text-left p-4 font-semibold text-gray-700'>Value</th>
                                 <th className='text-left p-4 font-semibold text-gray-700'>Min Order</th>
-                                <th className='text-left p-4 font-semibold text-gray-700'>Usage</th>
+                                <th className='text-left p-4 font-semibold text-gray-700'>Per User</th>
                                 <th className='text-left p-4 font-semibold text-gray-700'>Expiry</th>
                                 <th className='text-left p-4 font-semibold text-gray-700'>Status</th>
                                 <th className='text-left p-4 font-semibold text-gray-700'>Actions</th>
@@ -323,9 +325,7 @@ const Coupons = ({ token }) => {
                         <tbody>
                             {coupons.map((coupon, index) => {
                                 const isExpired = new Date(coupon.expiryDate) < new Date();
-                                const usagePercent = coupon.usageLimit
-                                    ? (coupon.usedCount / coupon.usageLimit) * 100
-                                    : 0;
+                                
 
                                 return (
                                     <tr key={index} className='border-t border-gray-200 hover:bg-gray-50 transition-colors'>
@@ -343,30 +343,13 @@ const Coupons = ({ token }) => {
                                             </span>
                                         </td>
                                         <td className='p-4 font-semibold'>
-                                            {coupon.type === 'percentage' ? `${coupon.value}%` : `$${coupon.value}`}
+                                            {coupon.type === 'percentage' ? `${coupon.value}%` : `₹${coupon.value}`}
                                             {coupon.maxDiscount && (
-                                                <div className='text-xs text-gray-500 mt-1'>max ${coupon.maxDiscount}</div>
+                                                <div className='text-xs text-gray-500 mt-1'>max ₹{coupon.maxDiscount}</div>
                                             )}
                                         </td>
-                                        <td className='p-4'>${coupon.minOrderValue}</td>
-                                        <td className='p-4'>
-                                            <div className='flex flex-col gap-1'>
-                                                <span className='font-semibold'>
-                                                    {coupon.usedCount} / {coupon.usageLimit || '∞'}
-                                                </span>
-                                                {coupon.usageLimit && (
-                                                    <div className='w-full bg-gray-200 rounded-full h-2'>
-                                                        <div
-                                                            className={`h-2 rounded-full ${usagePercent >= 90 ? 'bg-red-500' :
-                                                                    usagePercent >= 70 ? 'bg-yellow-500' :
-                                                                        'bg-green-500'
-                                                                }`}
-                                                            style={{ width: `${Math.min(usagePercent, 100)}%` }}
-                                                        />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
+                                        <td className='p-4'>₹{coupon.minOrderValue}</td>
+                                        <td className='p-4'>{coupon.perUserLimit != null ? coupon.perUserLimit : '∞'}</td>
                                         <td className='p-4'>
                                             <div className='flex flex-col'>
                                                 <span>{new Date(coupon.expiryDate).toLocaleDateString()}</span>

@@ -26,6 +26,13 @@ const PlaceOrder = () => {
         pincode: ''
     });
 
+    const [couponCode, setCouponCode] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+    const [couponDiscount, setCouponDiscount] = useState(0);
+    const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+    const [availableCoupons, setAvailableCoupons] = useState([]);
+    const [showCouponsList, setShowCouponsList] = useState(false);
+
     // Fetch saved addresses
     useEffect(() => {
         const fetchAddresses = async () => {
@@ -142,10 +149,13 @@ const PlaceOrder = () => {
             let orderData = {
                 addressId: selectedAddressId,
                 items: orderItems,
-                discount: 0
+                discount: appliedCoupon ? couponDiscount : 0,
+                couponCode: appliedCoupon ? appliedCoupon.code : null
             }
 
             switch (method) {
+
+                // coupon will be validated and reserved server-side during order placement
 
                 // API Calls for COD
                 case 'cod':
@@ -257,7 +267,122 @@ const PlaceOrder = () => {
                 <div className='mt-8'>
 
                     <div className='mt-8 min-w-80'>
-                        <CartTotal />
+                            <CartTotal />
+
+                            {/* Coupon input moved to checkout */}
+                            <div className='mt-6'>
+                                {!appliedCoupon ? (
+                                    <div className='flex gap-2'>
+                                        <input
+                                            type='text'
+                                            placeholder='Enter coupon code'
+                                            value={couponCode}
+                                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                            className='border px-3 py-2 flex-1 text-sm uppercase'
+                                            disabled={isApplyingCoupon}
+                                        />
+                                        <button
+                                            onClick={async () => {
+                                                if (!couponCode.trim()) {
+                                                    show('Please enter a coupon code', 'error');
+                                                    return;
+                                                }
+                                                setIsApplyingCoupon(true);
+                                                try {
+                                                    const resp = await axios.post(backendUrl + '/api/coupon/validate', { code: couponCode, cartTotal: await getCartAmount() }, { headers: { token } });
+                                                    if (resp.data.success) {
+                                                        setAppliedCoupon(resp.data.coupon);
+                                                        setCouponDiscount(resp.data.coupon.discount);
+                                                        show(resp.data.message, 'success');
+                                                    } else {
+                                                        show(resp.data.message, 'error');
+                                                    }
+                                                } catch (err) {
+                                                    console.log(err);
+                                                    show('Failed to validate coupon', 'error');
+                                                }
+                                                setIsApplyingCoupon(false);
+                                            }}
+                                            disabled={isApplyingCoupon}
+                                            className='bg-black text-white px-6 py-2 text-sm hover:bg-gray-800 disabled:bg-gray-400'
+                                        >
+                                            {isApplyingCoupon ? 'APPLYING...' : 'APPLY'}
+                                        </button>
+                                        <button
+                                            type='button'
+                                            onClick={async () => {
+                                                const total = await getCartAmount();
+                                                try {
+                                                    const resp = await axios.get(backendUrl + `/api/coupon/available?cartTotal=${total}`, { headers: { token } });
+                                                    if (resp.data.success) {
+                                                        setAvailableCoupons(resp.data.coupons);
+                                                        setShowCouponsList(s => !s);
+                                                    } else {
+                                                        show(resp.data.message, 'error');
+                                                    }
+                                                } catch (err) {
+                                                    console.log(err);
+                                                    show('Failed to fetch coupons', 'error');
+                                                }
+                                            }}
+                                            className='border px-4 py-2 text-sm'
+                                        >
+                                            {showCouponsList ? 'HIDE COUPONS' : 'SHOW AVAILABLE'}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className='flex items-center justify-between bg-green-50 border border-green-200 px-4 py-2 mt-3'>
+                                        <div>
+                                            <p className='text-sm font-medium text-green-700'>
+                                                Coupon Applied: {appliedCoupon.code}
+                                            </p>
+                                            <p className='text-xs text-green-600'>
+                                                {appliedCoupon.type === 'percentage'
+                                                    ? `${appliedCoupon.value}% off`
+                                                    : `₹${appliedCoupon.value} off`}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => { setAppliedCoupon(null); setCouponCode(''); setCouponDiscount(0); }}
+                                            className='text-red-500 hover:text-red-700 font-bold'
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                )}
+                                {/* Available coupons list */}
+                                {showCouponsList && availableCoupons.length > 0 && (
+                                    <div className='mt-3 border p-3 bg-gray-50'>
+                                        <p className='text-sm font-medium mb-2'>Available Coupons</p>
+                                        <div className='flex flex-col gap-2'>
+                                            {availableCoupons.map(c => (
+                                                <div key={c._id} className='flex items-center justify-between p-2 border rounded'>
+                                                    <div>
+                                                        <p className='font-medium'>{c.code} {c.perUserLimit ? <span className='text-xs text-gray-500'>(per user: {c.perUserLimit})</span> : null}</p>
+                                                        <p className='text-xs text-gray-600'>{c.type === 'percentage' ? `${c.value}% off` : `₹${c.value} off`}</p>
+                                                        <p className='text-xs text-gray-500'>Preview: ₹{c.previewDiscount}</p>
+                                                        {!c.eligible && <p className='text-xs text-red-500'>{c.reason}</p>}
+                                                    </div>
+                                                    <div>
+                                                        <button
+                                                            disabled={!c.eligible}
+                                                            onClick={() => {
+                                                                setAppliedCoupon(c);
+                                                                setCouponDiscount(c.previewDiscount);
+                                                                setCouponCode(c.code);
+                                                                setShowCouponsList(false);
+                                                            }}
+                                                            className={`px-3 py-1 text-sm ${c.eligible ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'}`}
+                                                        >
+                                                            APPLY
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                     </div>
 
                     <div className='mt-12'>
