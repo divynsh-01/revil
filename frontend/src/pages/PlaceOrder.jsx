@@ -33,6 +33,25 @@ const PlaceOrder = () => {
     const [availableCoupons, setAvailableCoupons] = useState([]);
     const [showCouponsList, setShowCouponsList] = useState(false);
 
+    // Build minimal cart items list for server-side category/product enforcement
+    const buildCartItemsPayload = () => {
+        const result = [];
+        for (const productId in cartItems) {
+            const prod = products.find(p => p._id === productId);
+            if (!prod) continue;
+            for (const variantKey in cartItems[productId]) {
+                if (cartItems[productId][variantKey] > 0) {
+                    result.push({
+                        productId,
+                        category: prod.category || '',
+                    });
+                    break; // one entry per product is enough for category check
+                }
+            }
+        }
+        return result;
+    };
+
     // Fetch saved addresses
     useEffect(() => {
         const fetchAddresses = async () => {
@@ -267,7 +286,7 @@ const PlaceOrder = () => {
                 <div className='mt-8'>
 
                     <div className='mt-8 min-w-80'>
-                            <CartTotal />
+                            <CartTotal discount={couponDiscount} couponCode={appliedCoupon?.code || null} />
 
                             {/* Coupon input moved to checkout */}
                             <div className='mt-6'>
@@ -282,6 +301,7 @@ const PlaceOrder = () => {
                                             disabled={isApplyingCoupon}
                                         />
                                         <button
+                                            type='button'
                                             onClick={async () => {
                                                 if (!couponCode.trim()) {
                                                     show('Please enter a coupon code', 'error');
@@ -289,7 +309,15 @@ const PlaceOrder = () => {
                                                 }
                                                 setIsApplyingCoupon(true);
                                                 try {
-                                                    const resp = await axios.post(backendUrl + '/api/coupon/validate', { code: couponCode, cartTotal: await getCartAmount() }, { headers: { token } });
+                                                    const resp = await axios.post(
+                                                        backendUrl + '/api/coupon/validate',
+                                                        {
+                                                            code: couponCode,
+                                                            cartTotal: await getCartAmount(),
+                                                            cartItems: buildCartItemsPayload()
+                                                        },
+                                                        { headers: { token } }
+                                                    );
                                                     if (resp.data.success) {
                                                         setAppliedCoupon(resp.data.coupon);
                                                         setCouponDiscount(resp.data.coupon.discount);
@@ -343,6 +371,7 @@ const PlaceOrder = () => {
                                             </p>
                                         </div>
                                         <button
+                                            type='button'
                                             onClick={() => { setAppliedCoupon(null); setCouponCode(''); setCouponDiscount(0); }}
                                             className='text-red-500 hover:text-red-700 font-bold'
                                         >
@@ -354,27 +383,50 @@ const PlaceOrder = () => {
                                 {showCouponsList && availableCoupons.length > 0 && (
                                     <div className='mt-3 border p-3 bg-gray-50'>
                                         <p className='text-sm font-medium mb-2'>Available Coupons</p>
-                                        <div className='flex flex-col gap-2'>
+                                        <div className='flex flex-col gap-2 max-h-60 overflow-y-auto pr-1'>
                                             {availableCoupons.map(c => (
                                                 <div key={c._id} className='flex items-center justify-between p-2 border rounded'>
                                                     <div>
-                                                        <p className='font-medium'>{c.code} {c.perUserLimit ? <span className='text-xs text-gray-500'>(per user: {c.perUserLimit})</span> : null}</p>
+                                                        <p className='font-medium'>{c.code}</p>
                                                         <p className='text-xs text-gray-600'>{c.type === 'percentage' ? `${c.value}% off` : `₹${c.value} off`}</p>
-                                                        <p className='text-xs text-gray-500'>Preview: ₹{c.previewDiscount}</p>
+                                                        <p className='text-xs text-gray-500'>Save: ₹{c.previewDiscount.toFixed(2)}</p>
+                                                        {c.description && <p className='text-xs text-gray-400 italic'>{c.description}</p>}
                                                         {!c.eligible && <p className='text-xs text-red-500'>{c.reason}</p>}
                                                     </div>
                                                     <div>
                                                         <button
-                                                            disabled={!c.eligible}
-                                                            onClick={() => {
-                                                                setAppliedCoupon(c);
-                                                                setCouponDiscount(c.previewDiscount);
-                                                                setCouponCode(c.code);
-                                                                setShowCouponsList(false);
+                                                            type='button'
+                                                            disabled={!c.eligible || isApplyingCoupon}
+                                                            onClick={async () => {
+                                                                // Re-validate server-side to get a fresh discount and ensure coupon is still valid
+                                                                setIsApplyingCoupon(true);
+                                                                try {
+                                                                    const resp = await axios.post(
+                                                                        backendUrl + '/api/coupon/validate',
+                                                                        {
+                                                                            code: c.code,
+                                                                            cartTotal: await getCartAmount(),
+                                                                            cartItems: buildCartItemsPayload()
+                                                                        },
+                                                                        { headers: { token } }
+                                                                    );
+                                                                    if (resp.data.success) {
+                                                                        setAppliedCoupon(resp.data.coupon);
+                                                                        setCouponDiscount(resp.data.coupon.discount);
+                                                                        setCouponCode(resp.data.coupon.code);
+                                                                        setShowCouponsList(false);
+                                                                        show(resp.data.message, 'success');
+                                                                    } else {
+                                                                        show(resp.data.message, 'error');
+                                                                    }
+                                                                } catch (err) {
+                                                                    show('Failed to validate coupon', 'error');
+                                                                }
+                                                                setIsApplyingCoupon(false);
                                                             }}
                                                             className={`px-3 py-1 text-sm ${c.eligible ? 'bg-black text-white' : 'bg-gray-200 text-gray-500'}`}
                                                         >
-                                                            APPLY
+                                                            {isApplyingCoupon ? '...' : 'APPLY'}
                                                         </button>
                                                     </div>
                                                 </div>

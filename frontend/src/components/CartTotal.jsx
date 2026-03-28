@@ -1,29 +1,23 @@
 import React, { useContext, useState, useEffect } from 'react'
 import { ShopContext } from '../context/ShopContext'
-import { useNotification } from '../context/NotificationContext'
 import Title from './Title';
-import axios from 'axios';
 
-const CartTotal = () => {
+const CartTotal = ({ discount = 0, couponCode = null }) => {
 
-  const { currency, delivery_fee, getCartAmount, backendUrl, cartItems, token } = useContext(ShopContext);
-  const { show } = useNotification();
+  const { currency, delivery_fee, getCartAmount, cartItems } = useContext(ShopContext);
 
-  
   const [cartTotal, setCartTotal] = useState(0);
 
-  // Calculate cart total (async)
   useEffect(() => {
     const fetchCartTotal = async () => {
       const total = await getCartAmount();
       setCartTotal(total);
     };
     fetchCartTotal();
-  }, [cartItems, getCartAmount]); // Recalculate when cart changes
+  }, [cartItems, getCartAmount]);
 
-  const finalTotal = cartTotal === 0 ? 0 : cartTotal + delivery_fee;
-
-  
+  const shipping = cartTotal === 0 ? 0 : delivery_fee;
+  const finalTotal = Math.max(0, cartTotal + shipping - discount);
 
   return (
     <div className='w-full'>
@@ -39,19 +33,28 @@ const CartTotal = () => {
         <hr />
         <div className='flex justify-between'>
           <p>Shipping Fee</p>
-          <p>{currency} {cartTotal === 0 ? 0 : delivery_fee}.00</p>
+          <p>{currency} {shipping}.00</p>
         </div>
         <hr />
+
+        {discount > 0 && (
+          <>
+            <div className='flex justify-between text-green-600 font-medium'>
+              <p>Discount {couponCode ? `(${couponCode})` : ''}</p>
+              <p>- {currency} {discount.toFixed(2)}</p>
+            </div>
+            <hr />
+          </>
+        )}
 
         <div className='flex justify-between'>
           <b>Total</b>
           <b>{currency} {finalTotal.toFixed(2)}</b>
         </div>
       </div>
-
-      {/* Coupon is applied on checkout page now */}
     </div>
   )
 }
 
 export default CartTotal
+

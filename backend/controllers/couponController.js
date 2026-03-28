@@ -3,7 +3,9 @@ import couponModel from "../models/couponModel.js";
 // Validate coupon code
 const validateCoupon = async (req, res) => {
     try {
-        const { code, cartTotal, cartItems, userId } = req.body;
+        // userId is always injected by authUser middleware into req.body
+        const { code, cartTotal, cartItems } = req.body;
+        const userId = req.body.userId;
 
         // Find coupon
         const coupon = await couponModel.findOne({ code: code.toUpperCase() });
@@ -22,9 +24,7 @@ const validateCoupon = async (req, res) => {
             return res.json({ success: false, message: "This coupon has expired" });
         }
 
-        // (No global overall usage limit) -- rely on per-user limits only
-
-        // Check per-user usage limit (requires authenticated user)
+        // Check per-user usage limit
         if (userId && coupon.perUserLimit) {
             const userEntry = coupon.usesByUser.find(u => u.userId?.toString() === userId?.toString());
             if (userEntry && userEntry.count >= coupon.perUserLimit) {
@@ -38,6 +38,27 @@ const validateCoupon = async (req, res) => {
                 success: false,
                 message: `Minimum order value of ₹${coupon.minOrderValue} required`
             });
+        }
+
+        // Enforce applicable categories (if restricted)
+        if (coupon.applicableCategories && coupon.applicableCategories.length > 0 && cartItems && cartItems.length > 0) {
+            const hasEligibleItem = cartItems.some(item =>
+                coupon.applicableCategories.includes(item.category)
+            );
+            if (!hasEligibleItem) {
+                return res.json({ success: false, message: `This coupon is only valid for: ${coupon.applicableCategories.join(', ')}` });
+            }
+        }
+
+        // Enforce applicable products (if restricted)
+        if (coupon.applicableProducts && coupon.applicableProducts.length > 0 && cartItems && cartItems.length > 0) {
+            const eligibleProductIds = coupon.applicableProducts.map(id => id.toString());
+            const hasEligibleProduct = cartItems.some(item =>
+                eligibleProductIds.includes(item.productId?.toString())
+            );
+            if (!hasEligibleProduct) {
+                return res.json({ success: false, message: 'This coupon is not applicable to the items in your cart' });
+            }
         }
 
         // Calculate discount
@@ -240,7 +261,7 @@ const listAvailableCoupons = async (req, res) => {
                 const userEntry = coupon.usesByUser.find(u => u.userId?.toString() === userId?.toString());
                 if (userEntry && userEntry.count >= coupon.perUserLimit) {
                     eligible = false;
-                    reason = `You have already used this coupon ${coupon.perUserLimit} time(s)`;
+                    reason = `This coupon can be used only ${coupon.perUserLimit} time(s). You have already used it ${coupon.perUserLimit} time(s).`;
                 }
             }
 
@@ -266,8 +287,12 @@ const listAvailableCoupons = async (req, res) => {
                 value: coupon.value,
                 minOrderValue: coupon.minOrderValue,
                 maxDiscount: coupon.maxDiscount,
+                expiryDate: coupon.expiryDate,
+                applicableCategories: coupon.applicableCategories,
+                applicableProducts: coupon.applicableProducts,
                 perUserLimit: coupon.perUserLimit,
                 usedCount: coupon.usedCount,
+                description: coupon.description,
                 eligible,
                 reason,
                 previewDiscount: discount

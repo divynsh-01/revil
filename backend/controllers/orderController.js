@@ -25,6 +25,47 @@ const generateOrderId = () => {
     return `ORD${timestamp}${random}`;
 };
 
+/**
+ * Shared helper: validate coupon, atomically reserve usage, and return the coupon doc.
+ * Throws an error (with a `userMessage` property) if the coupon is invalid.
+ */
+const validateAndReserveCoupon = async (couponCode, userId) => {
+    const now = new Date();
+    let coupon = await couponModel.findOne({ code: couponCode.toUpperCase() });
+    if (!coupon) throw Object.assign(new Error('Invalid coupon code'), { userMessage: true });
+    if (!coupon.isActive) throw Object.assign(new Error('This coupon is no longer active'), { userMessage: true });
+    if (now > new Date(coupon.expiryDate)) throw Object.assign(new Error('This coupon has expired'), { userMessage: true });
+
+    if (userId && coupon.perUserLimit) {
+        // Atomically increment existing user entry if below limit
+        const incExisting = await couponModel.findOneAndUpdate(
+            { _id: coupon._id, 'usesByUser': { $elemMatch: { userId, count: { $lt: coupon.perUserLimit } } } },
+            { $inc: { usedCount: 1, 'usesByUser.$.count': 1 } },
+            { new: true }
+        );
+        if (incExisting) {
+            return incExisting;
+        }
+        // Push new user entry if they haven't used it yet
+        const pushNew = await couponModel.findOneAndUpdate(
+            { _id: coupon._id, 'usesByUser.userId': { $ne: userId } },
+            { $inc: { usedCount: 1 }, $push: { usesByUser: { userId, count: 1 } } },
+            { new: true }
+        );
+        if (pushNew) return pushNew;
+        throw Object.assign(new Error(`You have already used this coupon ${coupon.perUserLimit} time(s)`), { userMessage: true });
+    } else {
+        // No per-user limit — just increment overall count
+        const updated = await couponModel.findOneAndUpdate(
+            { _id: coupon._id },
+            { $inc: { usedCount: 1 } },
+            { new: true }
+        );
+        if (!updated) throw Object.assign(new Error('Failed to reserve coupon usage'), { userMessage: true });
+        return updated;
+    }
+};
+
 // Placing orders using COD Method
 const placeOrder = async (req, res) => {
 
@@ -38,53 +79,13 @@ const placeOrder = async (req, res) => {
             return res.json({ success: false, message: "Address not found" });
         }
 
-        // If couponCode provided, validate and reserve usage atomically
+        // Validate and atomically reserve coupon usage
         const { couponCode } = req.body;
         if (couponCode) {
-            const now = new Date();
-            // Basic coupon fetch and checks
-            let coupon = await couponModel.findOne({ code: couponCode.toUpperCase() });
-            if (!coupon) return res.json({ success: false, message: 'Invalid coupon code' });
-            if (!coupon.isActive) return res.json({ success: false, message: 'This coupon is no longer active' });
-            if (now > new Date(coupon.expiryDate)) return res.json({ success: false, message: 'This coupon has expired' });
-
-            // No global overall usage limit; per-user limits enforced below
-
-            // If per-user limits exist and we have a user, try to atomically increment per-user entry if exists
-            const userId = req.body.userId;
-            if (userId && coupon.perUserLimit) {
-                // Try incrementing existing user entry where their count is below perUserLimit
-                const incExisting = await couponModel.findOneAndUpdate(
-                    { _id: coupon._id, 'usesByUser': { $elemMatch: { userId: userId, count: { $lt: coupon.perUserLimit } } } },
-                    { $inc: { usedCount: 1, 'usesByUser.$.count': 1 } },
-                    { new: true }
-                );
-
-                if (incExisting) {
-                    coupon = incExisting;
-                } else {
-                    // If no existing entry could be incremented, attempt to push a new entry for this user (if they don't already exist)
-                    const pushNew = await couponModel.findOneAndUpdate(
-                        { _id: coupon._id, 'usesByUser.userId': { $ne: userId } },
-                        { $inc: { usedCount: 1 }, $push: { usesByUser: { userId: userId, count: 1 } } },
-                        { new: true }
-                    );
-
-                    if (pushNew) {
-                        coupon = pushNew;
-                    } else {
-                        return res.json({ success: false, message: `You have already used this coupon ${coupon.perUserLimit} time(s)` });
-                    }
-                }
-            } else {
-                // No per-user limit or no user - atomically increment overall usage
-                const updated = await couponModel.findOneAndUpdate(
-                    { _id: coupon._id },
-                    { $inc: { usedCount: 1 } },
-                    { new: true }
-                );
-                if (!updated) return res.json({ success: false, message: 'Failed to reserve coupon usage' });
-                coupon = updated;
+            try {
+                await validateAndReserveCoupon(couponCode, userId);
+            } catch (err) {
+                return res.json({ success: false, message: err.message });
             }
         }
 
@@ -109,6 +110,7 @@ const placeOrder = async (req, res) => {
                 subtotal,
                 shipping,
                 discount: discountAmount,
+                couponCode: couponCode || '',
                 total
             },
             payment: {
@@ -135,7 +137,6 @@ const placeOrder = async (req, res) => {
 
         res.json({ success: true, message: "Order Placed", orderId: newOrder.orderId })
 
-
     } catch (error) {
         console.log(error)
         res.json({ success: false, message: error.message })
@@ -147,13 +148,22 @@ const placeOrder = async (req, res) => {
 const placeOrderStripe = async (req, res) => {
     try {
 
-        const { userId, items, addressId, discount } = req.body
+        const { userId, items, addressId, discount, couponCode } = req.body
         const { origin } = req.headers;
 
         // Get address
         const address = await addressModel.findById(addressId);
         if (!address) {
             return res.json({ success: false, message: "Address not found" });
+        }
+
+        // Validate and atomically reserve coupon usage
+        if (couponCode) {
+            try {
+                await validateAndReserveCoupon(couponCode, userId);
+            } catch (err) {
+                return res.json({ success: false, message: err.message });
+            }
         }
 
         // Calculate pricing
@@ -177,6 +187,7 @@ const placeOrderStripe = async (req, res) => {
                 subtotal,
                 shipping,
                 discount: discountAmount,
+                couponCode: couponCode || '',
                 total
             },
             payment: {
@@ -222,11 +233,24 @@ const placeOrderStripe = async (req, res) => {
             })
         }
 
+        // Apply discount via a Stripe one-time coupon (negative unit_amount is NOT supported by Stripe)
+        let sessionDiscounts = [];
+        if (discountAmount > 0) {
+            const stripeCoupon = await stripe.coupons.create({
+                amount_off: Math.round(discountAmount * 100),
+                currency,
+                duration: 'once',
+                name: couponCode ? `Coupon (${couponCode})` : 'Discount',
+            });
+            sessionDiscounts = [{ coupon: stripeCoupon.id }];
+        }
+
         const session = await stripe.checkout.sessions.create({
             success_url: `${origin}/verify?success=true&orderId=${newOrder._id}`,
             cancel_url: `${origin}/verify?success=false&orderId=${newOrder._id}`,
             line_items,
             mode: 'payment',
+            ...(sessionDiscounts.length > 0 && { discounts: sessionDiscounts }),
         })
 
         res.json({ success: true, session_url: session.url });
@@ -250,6 +274,18 @@ const verifyStripe = async (req, res) => {
             await cartModel.findOneAndUpdate({ userId }, { items: [] })
             res.json({ success: true });
         } else {
+            // Roll back coupon usage if one was applied
+            const order = await orderModel.findById(orderId);
+            if (order && order.pricing?.couponCode) {
+                await couponModel.findOneAndUpdate(
+                    { code: order.pricing.couponCode },
+                    {
+                        $inc: { usedCount: -1 },
+                        $inc: { 'usesByUser.$[elem].count': -1 }
+                    },
+                    { arrayFilters: [{ 'elem.userId': order.userId }] }
+                ).catch(() => {}); // best-effort rollback
+            }
             await orderModel.findByIdAndDelete(orderId)
             res.json({ success: false })
         }
@@ -265,12 +301,21 @@ const verifyStripe = async (req, res) => {
 const placeOrderRazorpay = async (req, res) => {
     try {
 
-        const { userId, items, addressId, discount } = req.body
+        const { userId, items, addressId, discount, couponCode } = req.body
 
         // Get address
         const address = await addressModel.findById(addressId);
         if (!address) {
             return res.json({ success: false, message: "Address not found" });
+        }
+
+        // Validate and atomically reserve coupon usage
+        if (couponCode) {
+            try {
+                await validateAndReserveCoupon(couponCode, userId);
+            } catch (err) {
+                return res.json({ success: false, message: err.message });
+            }
         }
 
         // Calculate pricing
@@ -294,6 +339,7 @@ const placeOrderRazorpay = async (req, res) => {
                 subtotal,
                 shipping,
                 discount: discountAmount,
+                couponCode: couponCode || '',
                 total
             },
             payment: {
@@ -349,6 +395,19 @@ const verifyRazorpay = async (req, res) => {
             await cartModel.findOneAndUpdate({ userId }, { items: [] })
             res.json({ success: true, message: "Payment Successful" })
         } else {
+            // Roll back coupon usage if one was applied
+            const order = await orderModel.findById(orderInfo.receipt);
+            if (order && order.pricing?.couponCode) {
+                await couponModel.findOneAndUpdate(
+                    { code: order.pricing.couponCode },
+                    { $inc: { usedCount: -1 } },
+                    {}
+                ).catch(() => {});
+                await couponModel.findOneAndUpdate(
+                    { code: order.pricing.couponCode, 'usesByUser.userId': order.userId },
+                    { $inc: { 'usesByUser.$.count': -1 } }
+                ).catch(() => {}); // best-effort rollback
+            }
             res.json({ success: false, message: 'Payment Failed' });
         }
 
