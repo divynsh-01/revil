@@ -68,26 +68,47 @@ const validateAndReserveCoupon = async (couponCode, userId) => {
 };
 
 /**
+ * Build the stockByVariant Map key from size + color.
+ * Keys are stored as "Size-Color" (e.g. "M-Red") or just "Size" if no color.
+ */
+const sbvKey = (size, color) => (color ? `${size}-${color}` : size);
+
+/**
  * Restore stock for items (called on payment failure or partial deduction rollback).
- * Best-effort: logs errors but doesn't throw.
+ * Updates BOTH variants[].stock (new model) AND stockByVariant (legacy Map).
+ * Best-effort: logs errors but never throws.
  */
 const restoreStock = async (items) => {
     for (const item of items) {
         if (!item.productId || !item.quantity) continue;
         try {
             if (item.variantId) {
+                // Fetch the variant to know its size+color for the stockByVariant key
+                const productDoc = await productModel.findOne(
+                    { _id: item.productId, 'variants._id': item.variantId },
+                    { 'variants.$': 1, stockByVariant: 1 }
+                );
+                const variant = productDoc?.variants?.[0];
+                const incFields = { 'variants.$.stock': item.quantity };
+                if (variant) {
+                    const key = sbvKey(variant.size, variant.color);
+                    // Only update stockByVariant if the key already exists (don't create phantom keys)
+                    if (productDoc.stockByVariant && productDoc.stockByVariant.get(key) !== undefined) {
+                        incFields[`stockByVariant.${key}`] = item.quantity;
+                    }
+                }
                 await productModel.findOneAndUpdate(
                     { _id: item.productId, 'variants._id': item.variantId },
-                    { $inc: { 'variants.$.stock': item.quantity } }
+                    { $inc: incFields }
                 );
             } else if (item.size) {
-                // Legacy: match by size+color
                 const elemMatch = item.color
                     ? { $elemMatch: { size: item.size, color: item.color } }
                     : { $elemMatch: { size: item.size } };
+                const key = sbvKey(item.size, item.color);
                 await productModel.findOneAndUpdate(
                     { _id: item.productId, variants: elemMatch },
-                    { $inc: { 'variants.$.stock': item.quantity } }
+                    { $inc: { 'variants.$.stock': item.quantity, [`stockByVariant.${key}`]: item.quantity } }
                 );
             }
         } catch (err) {
@@ -100,6 +121,7 @@ const restoreStock = async (items) => {
  * Atomically deduct stock for each order item.
  * Uses $elemMatch so the stock-check and the variant match are on the SAME array element
  * (avoids TOCTOU: two concurrent requests can't both succeed for the last unit).
+ * Also syncs the legacy stockByVariant Map field so MongoDB Atlas shows correct values.
  * Throws with a user-friendly error if any item is out of stock.
  */
 const deductStock = async (items) => {
@@ -112,23 +134,38 @@ const deductStock = async (items) => {
         let result = null;
 
         if (item.variantId) {
-            // New model: match by variantId — most precise
+            // Fetch the variant first to know its size+color for the stockByVariant key
+            const productDoc = await productModel.findOne(
+                { _id: item.productId, 'variants._id': item.variantId },
+                { 'variants.$': 1, stockByVariant: 1 }
+            );
+            const variant = productDoc?.variants?.[0];
+            const incFields = { 'variants.$.stock': -item.quantity };
+            if (variant) {
+                const key = sbvKey(variant.size, variant.color);
+                // Only decrement stockByVariant if the key already exists
+                if (productDoc.stockByVariant && productDoc.stockByVariant.get(key) !== undefined) {
+                    incFields[`stockByVariant.${key}`] = -item.quantity;
+                }
+            }
+            // Atomic deduct — only succeeds if stock >= quantity
             result = await productModel.findOneAndUpdate(
                 {
                     _id: item.productId,
                     variants: { $elemMatch: { _id: item.variantId, stock: { $gte: item.quantity } } }
                 },
-                { $inc: { 'variants.$.stock': -item.quantity } },
+                { $inc: incFields },
                 { new: true }
             );
         } else if (item.size) {
-            // Legacy: match by size + optional color
+            // Legacy: match by size + optional color, update both stock fields together
+            const key = sbvKey(item.size, item.color);
             const elemMatch = item.color
                 ? { $elemMatch: { size: item.size, color: item.color, stock: { $gte: item.quantity } } }
                 : { $elemMatch: { size: item.size, stock: { $gte: item.quantity } } };
             result = await productModel.findOneAndUpdate(
                 { _id: item.productId, variants: elemMatch },
-                { $inc: { 'variants.$.stock': -item.quantity } },
+                { $inc: { 'variants.$.stock': -item.quantity, [`stockByVariant.${key}`]: -item.quantity } },
                 { new: true }
             );
         }
