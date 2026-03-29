@@ -9,7 +9,7 @@ import axios from 'axios'
 const PlaceOrder = () => {
 
     const [method, setMethod] = useState('cod');
-    const { navigate, backendUrl, token, cartItems, setCartItems, getCartAmount, delivery_fee, products } = useContext(ShopContext);
+    const { navigate, backendUrl, token, cartItems, setCartItems, getCartAmount, delivery_fee, products, getBackendCartItems, getProductsData } = useContext(ShopContext);
     const { show } = useNotification();
 
     const [addresses, setAddresses] = useState([]);
@@ -33,6 +33,32 @@ const PlaceOrder = () => {
     const [availableCoupons, setAvailableCoupons] = useState([]);
     const [showCouponsList, setShowCouponsList] = useState(false);
     const [couponMessage, setCouponMessage] = useState({ text: '', type: '' }); // type: 'success' | 'error'
+
+    const handleApplyCoupon = async () => {
+        if (!couponCode.trim()) {
+            setCouponMessage({ text: 'Please enter a coupon code', type: 'error' });
+            return;
+        }
+        setIsApplyingCoupon(true);
+        try {
+            const resp = await axios.post(
+                backendUrl + '/api/coupon/validate',
+                { code: couponCode, cartTotal: await getCartAmount(), cartItems: buildCartItemsPayload() },
+                { headers: { token } }
+            );
+            if (resp.data.success) {
+                setAppliedCoupon(resp.data.coupon);
+                setCouponDiscount(resp.data.coupon.discount);
+                setCouponMessage({ text: `✓ Coupon applied! You save ₹${resp.data.coupon.discount.toFixed(2)}`, type: 'success' });
+            } else {
+                setCouponMessage({ text: resp.data.message, type: 'error' });
+            }
+        } catch (err) {
+            console.log(err);
+            setCouponMessage({ text: 'Failed to validate coupon', type: 'error' });
+        }
+        setIsApplyingCoupon(false);
+    };
 
     // Build minimal cart items list for server-side category/product enforcement
     const buildCartItemsPayload = () => {
@@ -124,8 +150,9 @@ const PlaceOrder = () => {
                 try {
                     const { data } = await axios.post(backendUrl + '/api/order/verifyRazorpay', response, { headers: { token } })
                     if (data.success) {
-                        navigate('/orders')
                         setCartItems({})
+                        await getProductsData() // Refresh product stock in memory
+                        navigate('/orders')
                     }
                 } catch (error) {
                     console.log(error)
@@ -140,27 +167,47 @@ const PlaceOrder = () => {
     const onSubmitHandler = async (event) => {
         event.preventDefault()
 
-        if (!selectedAddressId && !showNewAddressForm) {
-            show('Please select a delivery address', 'error');
+        if (!selectedAddressId) {
+            show('Please select or save a delivery address first', 'error');
             return;
         }
 
         try {
             let orderItems = []
 
-            for (const items in cartItems) {
-                for (const item in cartItems[items]) {
-                    if (cartItems[items][item] > 0) {
-                        const itemInfo = products.find(product => product._id === items)
-                        if (itemInfo) {
-                            orderItems.push({
-                                productId: itemInfo._id,
-                                title: itemInfo.title || itemInfo.name,
-                                price: itemInfo.discountPrice || itemInfo.price,
-                                image: itemInfo.images?.[0]?.url || itemInfo.images?.[0] || itemInfo.image?.[0] || "",
-                                size: item,
-                                quantity: cartItems[items][item]
-                            })
+            if (token) {
+                // Logged-in users: fetch backend cart to get correct variant prices/images/titles
+                const backendCart = await getBackendCartItems();
+                backendCart.forEach(item => {
+                    if (item.quantity > 0) {
+                        orderItems.push({
+                            productId: item.productId,
+                            variantId: item.variantId || null,   // Critical for atomic stock deduction
+                            title: item.title,
+                            price: item.price,
+                            image: item.image || '',
+                            size: item.size || '',
+                            color: item.color || null,
+                            quantity: item.quantity
+                        })
+                    }
+                })
+            } else {
+                // Guest users: build from local cartItems + products
+                for (const items in cartItems) {
+                    for (const item in cartItems[items]) {
+                        if (cartItems[items][item] > 0) {
+                            const itemInfo = products.find(product => product._id === items)
+                            if (itemInfo) {
+                                orderItems.push({
+                                    productId: itemInfo._id,
+                                    title: itemInfo.title || itemInfo.name,
+                                    price: itemInfo.discountPrice || itemInfo.price,
+                                    image: itemInfo.images?.[0]?.url || itemInfo.images?.[0] || itemInfo.image?.[0] || "",
+                                    size: item,
+                                    quantity: cartItems[items][item]
+                                })
+                            }
                         }
                     }
                 }
@@ -182,6 +229,7 @@ const PlaceOrder = () => {
                     const response = await axios.post(backendUrl + '/api/order/place', orderData, { headers: { token } })
                     if (response.data.success) {
                         setCartItems({})
+                        await getProductsData() // Refresh product stock in memory
                         show('Order placed successfully!', 'success')
                         navigate('/orders')
                     } else {
@@ -289,8 +337,9 @@ const PlaceOrder = () => {
                     <div className='mt-8 min-w-80'>
                             <CartTotal discount={couponDiscount} couponCode={appliedCoupon?.code || null} />
 
-                            {/* Coupon input moved to checkout */}
+                            {/* Promo Code Section */}
                             <div className='mt-6'>
+                                <p className='text-sm font-medium text-gray-700 mb-3'>🏷 Have a promo code?</p>
                                 {!appliedCoupon ? (
                                     <>
                                     <div className='flex gap-2'>
@@ -299,40 +348,13 @@ const PlaceOrder = () => {
                                             placeholder='Enter coupon code'
                                             value={couponCode}
                                             onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setCouponMessage({ text: '', type: '' }); }}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyCoupon(); } }}
                                             className='border px-3 py-2 flex-1 text-sm uppercase'
                                             disabled={isApplyingCoupon}
                                         />
                                         <button
                                             type='button'
-                                            onClick={async () => {
-                                                if (!couponCode.trim()) {
-                                                    setCouponMessage({ text: 'Please enter a coupon code', type: 'error' });
-                                                    return;
-                                                }
-                                                setIsApplyingCoupon(true);
-                                                try {
-                                                    const resp = await axios.post(
-                                                        backendUrl + '/api/coupon/validate',
-                                                        {
-                                                            code: couponCode,
-                                                            cartTotal: await getCartAmount(),
-                                                            cartItems: buildCartItemsPayload()
-                                                        },
-                                                        { headers: { token } }
-                                                    );
-                                                    if (resp.data.success) {
-                                                        setAppliedCoupon(resp.data.coupon);
-                                                        setCouponDiscount(resp.data.coupon.discount);
-                                                        setCouponMessage({ text: `✓ Coupon applied! You save ₹${resp.data.coupon.discount.toFixed(2)}`, type: 'success' });
-                                                    } else {
-                                                        setCouponMessage({ text: resp.data.message, type: 'error' });
-                                                    }
-                                                } catch (err) {
-                                                    console.log(err);
-                                                    setCouponMessage({ text: 'Failed to validate coupon', type: 'error' });
-                                                }
-                                                setIsApplyingCoupon(false);
-                                            }}
+                                            onClick={handleApplyCoupon}
                                             disabled={isApplyingCoupon}
                                             className='bg-black text-white px-6 py-2 text-sm hover:bg-gray-800 disabled:bg-gray-400'
                                         >

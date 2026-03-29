@@ -134,8 +134,11 @@ const MiniCart = () => {
                                             </div>
                                             <div className='flex items-center space-x-2 mt-2'>
                                                 <button 
-                                                    onClick={() => handleUpdateQuantity(item, item.quantity - 1)}
-                                                    className='w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50'
+                                                    onClick={() => {
+                                                        if (item.quantity <= 1) return;
+                                                        handleUpdateQuantity(item, item.quantity - 1)
+                                                    }}
+                                                    className='w-8 h-8 flex items-center justify-center border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed'
                                                     disabled={item.quantity <= 1}
                                                 >
                                                     -

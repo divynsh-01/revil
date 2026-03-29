@@ -122,7 +122,7 @@ const Cart = () => {
                         <div>
                           <p className='text-xs sm:text-lg font-medium'>{item.title}</p>
                           <div className='flex items-center gap-5 mt-2'>
-                            <p>{currency}{item.price}</p>
+                            <p>{currency}{item.price?.toFixed(2)}</p>
                             <div className='flex gap-2'>
                               <p className='px-2 sm:px-3 sm:py-1 border bg-slate-50'>{item.size}</p>
                               {item.color && <p className='px-2 sm:px-3 sm:py-1 border bg-blue-50 text-blue-700'>{item.color}</p>}
@@ -242,7 +242,7 @@ const Cart = () => {
             <div className='w-full lg:w-[450px]'>
               <CartTotal />
               <div className=' w-full text-end'>
-                <button onClick={() => token ? navigate('/place-order') : navigate('/login')} className='bg-black text-white text-sm my-8 px-8 py-3'>PROCEED TO CHECKOUT</button>
+                <button onClick={() => token ? navigate('/place-order') : navigate('/login?redirect=/place-order')} className='bg-black text-white text-sm my-8 px-8 py-3'>PROCEED TO CHECKOUT</button>
               </div>
             </div>
           )}

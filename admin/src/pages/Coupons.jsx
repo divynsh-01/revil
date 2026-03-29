@@ -119,6 +119,7 @@ const Coupons = ({ token }) => {
             value: '',
             minOrderValue: '',
             maxDiscount: '',
+            perUserLimit: '',
             expiryDate: '',
             description: ''
         });

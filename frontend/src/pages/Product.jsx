@@ -139,7 +139,7 @@ const Product = () => {
 
   return productData ? (
     <div className='px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
-      <div className='border-t-1.5 pt-10 transition-opacity ease-in duration-500 opacity-100'>
+      <div className='border-t pt-10 transition-opacity ease-in duration-500 opacity-100'>
         {/*----------- Product Data-------------- */}
         <div className='flex gap-12 sm:gap-12 flex-col sm:flex-row'>
 
@@ -208,12 +208,12 @@ const Product = () => {
             </h1>
             {productData.brand && <p className='text-gray-600 mt-1 text-sm'>Brand: <span className='font-medium'>{productData.brand}</span></p>}
             <div className=' flex items-center gap-1 mt-2'>
-              <img src={assets.star_icon} alt="" className="w-3 5" />
-              <img src={assets.star_icon} alt="" className="w-3 5" />
-              <img src={assets.star_icon} alt="" className="w-3 5" />
-              <img src={assets.star_icon} alt="" className="w-3 5" />
-              <img src={assets.star_dull_icon} alt="" className="w-3 5" />
-              <p className='pl-2'>(122)</p>
+              <img src={assets.star_icon} alt="" className="w-3.5" />
+              <img src={assets.star_icon} alt="" className="w-3.5" />
+              <img src={assets.star_icon} alt="" className="w-3.5" />
+              <img src={assets.star_icon} alt="" className="w-3.5" />
+              <img src={assets.star_dull_icon} alt="" className="w-3.5" />
+              <p className='pl-2 text-xs text-gray-500'>(Demo rating)</p>
             </div>
             <div className='mt-5 flex items-center gap-3'>
               <p className='text-3xl font-medium'>
@@ -434,15 +434,17 @@ const Product = () => {
           }}
         />
 
-        {/* ---------- Description & Review Section ------------- */}
         <div className='mt-20'>
           <div className='flex'>
             <b className='border px-5 py-3 text-sm'>Description</b>
-            <p className='border px-5 py-3 text-sm'>Reviews (122)</p>
+            <p className='border px-5 py-3 text-sm text-gray-400'>Reviews (Coming Soon)</p>
           </div>
           <div className='flex flex-col gap-4 border px-6 py-6 text-sm text-gray-500'>
-            <p>An e-commerce website is an online platform that facilitates the buying and selling of products or services over the internet. It serves as a virtual marketplace where businesses and individuals can showcase their products, interact with customers, and conduct transactions without the need for a physical presence. E-commerce websites have gained immense popularity due to their convenience, accessibility, and the global reach they offer.</p>
-            <p>E-commerce websites typically display products or services along with detailed descriptions, images, prices, and any available variations (e.g., sizes, colors). Each product usually has its own dedicated page with relevant information.</p>
+            {productData.description ? (
+              <p>{productData.description}</p>
+            ) : (
+              <p className='text-gray-400 italic'>No description available for this product.</p>
+            )}
           </div>
         </div>
 

@@ -28,12 +28,12 @@ const CartTotal = ({ discount = 0, couponCode = null }) => {
       <div className='flex flex-col gap-2 mt-2 text-sm'>
         <div className='flex justify-between'>
           <p>Subtotal</p>
-          <p>{currency} {cartTotal}.00</p>
+          <p>{currency} {cartTotal.toFixed(2)}</p>
         </div>
         <hr />
         <div className='flex justify-between'>
           <p>Shipping Fee</p>
-          <p>{currency} {shipping}.00</p>
+          <p>{currency} {shipping.toFixed(2)}</p>
         </div>
         <hr />
 

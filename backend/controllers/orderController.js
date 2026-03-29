@@ -1,5 +1,6 @@
 import orderModel from "../models/orderModel.js";
 import couponModel from "../models/couponModel.js";
+import productModel from "../models/productModel.js";
 import userModel from "../models/userModel.js";
 import cartModel from "../models/cartModel.js";
 import addressModel from "../models/addressModel.js";
@@ -18,10 +19,10 @@ const razorpayInstance = new razorpay({
     key_secret: process.env.RAZORPAY_KEY_SECRET,
 })
 
-// Generate unique order ID
+// Generate unique order ID — base36 timestamp + 4 random chars eliminates collision risk
 const generateOrderId = () => {
-    const timestamp = Date.now().toString().slice(-6);
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const timestamp = Date.now().toString(36).toUpperCase();
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
     return `ORD${timestamp}${random}`;
 };
 
@@ -66,12 +67,92 @@ const validateAndReserveCoupon = async (couponCode, userId) => {
     }
 };
 
+/**
+ * Restore stock for items (called on payment failure or partial deduction rollback).
+ * Best-effort: logs errors but doesn't throw.
+ */
+const restoreStock = async (items) => {
+    for (const item of items) {
+        if (!item.productId || !item.quantity) continue;
+        try {
+            if (item.variantId) {
+                await productModel.findOneAndUpdate(
+                    { _id: item.productId, 'variants._id': item.variantId },
+                    { $inc: { 'variants.$.stock': item.quantity } }
+                );
+            } else if (item.size) {
+                // Legacy: match by size+color
+                const elemMatch = item.color
+                    ? { $elemMatch: { size: item.size, color: item.color } }
+                    : { $elemMatch: { size: item.size } };
+                await productModel.findOneAndUpdate(
+                    { _id: item.productId, variants: elemMatch },
+                    { $inc: { 'variants.$.stock': item.quantity } }
+                );
+            }
+        } catch (err) {
+            console.error('⚠️  Stock restore failed for product:', item.productId, err.message);
+        }
+    }
+};
+
+/**
+ * Atomically deduct stock for each order item.
+ * Uses $elemMatch so the stock-check and the variant match are on the SAME array element
+ * (avoids TOCTOU: two concurrent requests can't both succeed for the last unit).
+ * Throws with a user-friendly error if any item is out of stock.
+ */
+const deductStock = async (items) => {
+    const deducted = [];
+    const outOfStock = [];
+
+    for (const item of items) {
+        if (!item.productId || !item.quantity) continue;
+
+        let result = null;
+
+        if (item.variantId) {
+            // New model: match by variantId — most precise
+            result = await productModel.findOneAndUpdate(
+                {
+                    _id: item.productId,
+                    variants: { $elemMatch: { _id: item.variantId, stock: { $gte: item.quantity } } }
+                },
+                { $inc: { 'variants.$.stock': -item.quantity } },
+                { new: true }
+            );
+        } else if (item.size) {
+            // Legacy: match by size + optional color
+            const elemMatch = item.color
+                ? { $elemMatch: { size: item.size, color: item.color, stock: { $gte: item.quantity } } }
+                : { $elemMatch: { size: item.size, stock: { $gte: item.quantity } } };
+            result = await productModel.findOneAndUpdate(
+                { _id: item.productId, variants: elemMatch },
+                { $inc: { 'variants.$.stock': -item.quantity } },
+                { new: true }
+            );
+        }
+
+        if (result) {
+            deducted.push(item);
+        } else {
+            outOfStock.push(item.title || String(item.productId));
+        }
+    }
+
+    if (outOfStock.length > 0) {
+        // Rollback any stock already deducted in this batch
+        await restoreStock(deducted);
+        throw new Error(`Out of stock or insufficient quantity for: ${outOfStock.join(', ')}. Please update your cart and try again.`);
+    }
+};
+
 // Placing orders using COD Method
 const placeOrder = async (req, res) => {
 
     try {
 
-        const { userId, items, addressId, discount } = req.body;
+        const { userId, items, addressId, discount, couponCode } = req.body;
 
         // Get address
         const address = await addressModel.findById(addressId);
@@ -80,13 +161,28 @@ const placeOrder = async (req, res) => {
         }
 
         // Validate and atomically reserve coupon usage
-        const { couponCode } = req.body;
         if (couponCode) {
             try {
                 await validateAndReserveCoupon(couponCode, userId);
             } catch (err) {
                 return res.json({ success: false, message: err.message });
             }
+        }
+
+        // Atomically deduct stock before saving order
+        // If any item is out of stock, this throws — no order is created
+        try {
+            await deductStock(items);
+        } catch (stockErr) {
+            // Also roll back coupon if one was reserved
+            if (couponCode) {
+                await couponModel.findOneAndUpdate(
+                    { code: couponCode.toUpperCase() },
+                    { $inc: { usedCount: -1, 'usesByUser.$[elem].count': -1 } },
+                    { arrayFilters: [{ 'elem.userId': userId }] }
+                ).catch(() => {});
+            }
+            return res.json({ success: false, message: stockErr.message });
         }
 
         // Calculate pricing
@@ -100,9 +196,11 @@ const placeOrder = async (req, res) => {
             userId,
             items: items.map(item => ({
                 productId: item.productId,
+                variantId: item.variantId || null,
                 title: item.title,
-                image: item.image,
-                size: item.size,
+                image: item.image || '',
+                size: item.size || '',
+                color: item.color || null,
                 price: item.price,
                 quantity: item.quantity
             })),
@@ -129,8 +227,15 @@ const placeOrder = async (req, res) => {
             orderStatus: "Order Placed"
         }
 
-        const newOrder = new orderModel(orderData)
-        await newOrder.save()
+        let newOrder;
+        try {
+            newOrder = new orderModel(orderData);
+            await newOrder.save();
+        } catch (saveErr) {
+            // Order DB save failed — restore stock that was already deducted
+            await restoreStock(items);
+            throw saveErr;
+        }
 
         // Clear cart
         await cartModel.findOneAndUpdate({ userId }, { items: [] })
@@ -166,6 +271,21 @@ const placeOrderStripe = async (req, res) => {
             }
         }
 
+        // Atomically deduct stock — reserves inventory while user completes Stripe payment
+        // On failure, restored in verifyStripe cancel_url handler
+        try {
+            await deductStock(items);
+        } catch (stockErr) {
+            if (couponCode) {
+                await couponModel.findOneAndUpdate(
+                    { code: couponCode.toUpperCase() },
+                    { $inc: { usedCount: -1, 'usesByUser.$[elem].count': -1 } },
+                    { arrayFilters: [{ 'elem.userId': userId }] }
+                ).catch(() => {});
+            }
+            return res.json({ success: false, message: stockErr.message });
+        }
+
         // Calculate pricing
         const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         const shipping = deliveryCharge;
@@ -177,9 +297,11 @@ const placeOrderStripe = async (req, res) => {
             userId,
             items: items.map(item => ({
                 productId: item.productId,
+                variantId: item.variantId || null,
                 title: item.title,
-                image: item.image,
-                size: item.size,
+                image: item.image || '',
+                size: item.size || '',
+                color: item.color || null,
                 price: item.price,
                 quantity: item.quantity
             })),
@@ -206,8 +328,14 @@ const placeOrderStripe = async (req, res) => {
             orderStatus: "Order Placed"
         }
 
-        const newOrder = new orderModel(orderData)
-        await newOrder.save()
+        let newOrder;
+        try {
+            newOrder = new orderModel(orderData);
+            await newOrder.save();
+        } catch (saveErr) {
+            await restoreStock(items);
+            throw saveErr;
+        }
 
         const line_items = items.map((item) => ({
             price_data: {
@@ -233,7 +361,7 @@ const placeOrderStripe = async (req, res) => {
             })
         }
 
-        // Apply discount via a Stripe one-time coupon (negative unit_amount is NOT supported by Stripe)
+        // Apply discount via a Stripe one-time coupon
         let sessionDiscounts = [];
         if (discountAmount > 0) {
             const stripeCoupon = await stripe.coupons.create({
@@ -268,23 +396,25 @@ const verifyStripe = async (req, res) => {
 
     try {
         if (success === "true") {
-            await orderModel.findByIdAndUpdate(orderId, {
-                "payment.status": "paid"
-            });
+            // Stock already deducted at placeOrderStripe time — just mark as paid
+            await orderModel.findByIdAndUpdate(orderId, { "payment.status": "paid" });
             await cartModel.findOneAndUpdate({ userId }, { items: [] })
             res.json({ success: true });
         } else {
-            // Roll back coupon usage if one was applied
+            // Payment failed/cancelled — restore stock and roll back coupon
             const order = await orderModel.findById(orderId);
-            if (order && order.pricing?.couponCode) {
-                await couponModel.findOneAndUpdate(
-                    { code: order.pricing.couponCode },
-                    {
-                        $inc: { usedCount: -1 },
-                        $inc: { 'usesByUser.$[elem].count': -1 }
-                    },
-                    { arrayFilters: [{ 'elem.userId': order.userId }] }
-                ).catch(() => {}); // best-effort rollback
+            if (order) {
+                // Restore stock
+                await restoreStock(order.items);
+
+                // Roll back coupon usage (single atomic update)
+                if (order.pricing?.couponCode) {
+                    await couponModel.findOneAndUpdate(
+                        { code: order.pricing.couponCode },
+                        { $inc: { usedCount: -1, 'usesByUser.$[elem].count': -1 } },
+                        { arrayFilters: [{ 'elem.userId': order.userId }] }
+                    ).catch(() => {});
+                }
             }
             await orderModel.findByIdAndDelete(orderId)
             res.json({ success: false })
@@ -318,6 +448,20 @@ const placeOrderRazorpay = async (req, res) => {
             }
         }
 
+        // Atomically deduct stock — reserves inventory while user completes Razorpay payment
+        try {
+            await deductStock(items);
+        } catch (stockErr) {
+            if (couponCode) {
+                await couponModel.findOneAndUpdate(
+                    { code: couponCode.toUpperCase() },
+                    { $inc: { usedCount: -1, 'usesByUser.$[elem].count': -1 } },
+                    { arrayFilters: [{ 'elem.userId': userId }] }
+                ).catch(() => {});
+            }
+            return res.json({ success: false, message: stockErr.message });
+        }
+
         // Calculate pricing
         const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         const shipping = deliveryCharge;
@@ -329,9 +473,11 @@ const placeOrderRazorpay = async (req, res) => {
             userId,
             items: items.map(item => ({
                 productId: item.productId,
+                variantId: item.variantId || null,
                 title: item.title,
-                image: item.image,
-                size: item.size,
+                image: item.image || '',
+                size: item.size || '',
+                color: item.color || null,
                 price: item.price,
                 quantity: item.quantity
             })),
@@ -358,8 +504,14 @@ const placeOrderRazorpay = async (req, res) => {
             orderStatus: "Order Placed"
         }
 
-        const newOrder = new orderModel(orderData)
-        await newOrder.save()
+        let newOrder;
+        try {
+            newOrder = new orderModel(orderData);
+            await newOrder.save();
+        } catch (saveErr) {
+            await restoreStock(items);
+            throw saveErr;
+        }
 
         const options = {
             amount: total * 100,
@@ -388,6 +540,7 @@ const verifyRazorpay = async (req, res) => {
 
         const orderInfo = await razorpayInstance.orders.fetch(razorpay_order_id)
         if (orderInfo.status === 'paid') {
+            // Stock already deducted at placeOrderRazorpay time — just mark as paid
             await orderModel.findByIdAndUpdate(orderInfo.receipt, {
                 "payment.status": "paid",
                 "payment.paymentId": razorpay_order_id
@@ -395,18 +548,17 @@ const verifyRazorpay = async (req, res) => {
             await cartModel.findOneAndUpdate({ userId }, { items: [] })
             res.json({ success: true, message: "Payment Successful" })
         } else {
-            // Roll back coupon usage if one was applied
+            // Payment failed — restore stock and roll back coupon (single atomic update)
             const order = await orderModel.findById(orderInfo.receipt);
-            if (order && order.pricing?.couponCode) {
-                await couponModel.findOneAndUpdate(
-                    { code: order.pricing.couponCode },
-                    { $inc: { usedCount: -1 } },
-                    {}
-                ).catch(() => {});
-                await couponModel.findOneAndUpdate(
-                    { code: order.pricing.couponCode, 'usesByUser.userId': order.userId },
-                    { $inc: { 'usesByUser.$.count': -1 } }
-                ).catch(() => {}); // best-effort rollback
+            if (order) {
+                await restoreStock(order.items);
+                if (order.pricing?.couponCode) {
+                    await couponModel.findOneAndUpdate(
+                        { code: order.pricing.couponCode },
+                        { $inc: { usedCount: -1, 'usesByUser.$[elem].count': -1 } },
+                        { arrayFilters: [{ 'elem.userId': order.userId }] }
+                    ).catch(() => {});
+                }
             }
             res.json({ success: false, message: 'Payment Failed' });
         }

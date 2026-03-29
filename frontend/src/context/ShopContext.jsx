@@ -393,6 +393,7 @@ const ShopContextProvider = (props) => {
         wishlist, addToWishlist, removeFromWishlist, getWishlistCount,
         getBackendCartItems,
         getUserCart,
+        getProductsData,
         showLoginModal, setShowLoginModal,
         pendingWishlistId, setPendingWishlistId,
         showMiniCart, setShowMiniCart,

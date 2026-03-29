@@ -3,9 +3,11 @@ import { ORDER_STATUS } from '../config/orderStatus.js'
 
 const orderItemSchema = new mongoose.Schema({
     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'product' },
+    variantId: { type: mongoose.Schema.Types.ObjectId, default: null }, // For atomic stock deduction
     title: { type: String, required: true },
-    image: { type: String, required: true },
-    size: { type: String, required: true },
+    image: { type: String, default: '' },
+    size: { type: String, default: '' },
+    color: { type: String, default: null },
     price: { type: Number, required: true },
     quantity: { type: Number, required: true, min: 1 }
 }, { _id: false })
@@ -46,7 +48,6 @@ const orderSchema = new mongoose.Schema({
         pincode: { type: String, required: true }
     },
 
-    // ... (previous code)
 
     // Order status workflow
     orderStatus: {

@@ -43,16 +43,10 @@ const Collection = () => {
 
   // Available filter options
   const availableSizes = ['S', 'M', 'L', 'XL', 'XXL'];
-  const availableColors = [
-    { name: 'Black', hex: '#000000' },
-    { name: 'White', hex: '#FFFFFF' },
-    { name: 'Red', hex: '#FF0000' },
-    { name: 'Blue', hex: '#0000FF' },
-    { name: 'Green', hex: '#00FF00' },
-    { name: 'Yellow', hex: '#FFFF00' },
-    { name: 'Pink', hex: '#FFC0CB' },
-    { name: 'Brown', hex: '#8B4513' },
-  ];
+  // Dynamically extract unique colors from all in-stock products
+  const availableColors = [...new Set(
+    inStockProducts.flatMap(p => p.colors || [])
+  )].sort().map(name => ({ name }));
 
   const toggleCategory = (e) => {
     if (category.includes(e.target.value)) {
@@ -148,7 +142,7 @@ const Collection = () => {
         break;
 
       case 'bestseller':
-        setFilterProducts(fpCopy.filter(item => item.bestseller));
+        setFilterProducts(fpCopy.sort((a, b) => (b.bestseller ? 1 : 0) - (a.bestseller ? 1 : 0)));
         break;
 
       default:
@@ -289,22 +283,23 @@ const Collection = () => {
               </div>
             </div>
 
-            {/* Color Filter */}
-            <div className='border border-gray-300 pl-5 py-3 my-5'>
+            <div className='border border-gray-300 pl-5 py-3 pr-5 my-5'>
               <p className='mb-3 text-sm font-medium'>COLOR</p>
               <div className='flex flex-wrap gap-2'>
                 {availableColors.map((color, index) => (
                   <button
                     key={index}
                     onClick={() => toggleColor(color.name)}
-                    className={`w-8 h-8 rounded-full border-2 ${colors.includes(color.name) ? 'border-black' : 'border-gray-300'}`}
-                    style={{ backgroundColor: color.hex }}
+                    className={`px-3 py-1 border text-xs transition-colors ${
+                      colors.includes(color.name)
+                        ? 'bg-black text-white border-black'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-gray-500'
+                    }`}
                     title={color.name}
                   >
+                    {color.name}
                     {colors.includes(color.name) && (
-                      <svg className='w-full h-full' fill='white' viewBox='0 0 24 24'>
-                        <path d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' />
-                      </svg>
+                      <span className='ml-1'>✓</span>
                     )}
                   </button>
                 ))}

@@ -8,6 +8,7 @@ const Orders = ({ token }) => {
   const { show } = useNotification();
 
   const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(false)
   const [showTracking, setShowTracking] = useState(null)
   const [trackingData, setTrackingData] = useState({
     courier: '',
@@ -36,6 +37,7 @@ const Orders = ({ token }) => {
     }
 
     try {
+      setLoading(true)
       const response = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token } })
       if (response.data.success) {
         setOrders(response.data.orders.reverse())
@@ -44,6 +46,8 @@ const Orders = ({ token }) => {
       }
     } catch (error) {
       show(error.message, 'error')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -98,7 +102,11 @@ const Orders = ({ token }) => {
         </select>
       </div>
       <div>
-        {
+        {loading ? (
+          <div className='flex justify-center py-16'>
+            <div className='w-10 h-10 border-4 border-gray-200 border-t-black rounded-full animate-spin'></div>
+          </div>
+        ) : (
           orders.filter(order => statusFilter === "All" || order.orderStatus === statusFilter).map((order, index) => (
             <div className='grid grid-cols-1 sm:grid-cols-[0.5fr_2fr_1fr] lg:grid-cols-[0.5fr_2fr_1fr_1fr_1fr] gap-3 items-start border-2 border-gray-200 p-5 md:p-8 my-3 md:my-4 text-xs sm:text-sm text-gray-700' key={index}>
               <img className='w-12' src={assets.parcel_icon} alt="" />
@@ -220,7 +228,7 @@ const Orders = ({ token }) => {
               </select>
             </div>
           ))
-        }
+        )}
       </div>
     </div>
   )
