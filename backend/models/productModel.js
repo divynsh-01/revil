@@ -59,9 +59,14 @@ const productSchema = new mongoose.Schema({
     isFeatured: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
 
+    // Reviews — updated atomically whenever a review is submitted/edited/deleted
+    avgRating: { type: Number, default: 0, min: 0, max: 5 },
+    reviewCount: { type: Number, default: 0, min: 0 },
+
     // Timestamps
     createdAt: { type: Number, required: true, default: Date.now },
     updatedAt: { type: Number, required: true, default: Date.now }
+
 });
 
 // Auto-update updatedAt on save

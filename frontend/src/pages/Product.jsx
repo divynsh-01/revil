@@ -1,20 +1,27 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import axios from 'axios';
 import { ShopContext } from '../context/ShopContext';
 import { assets } from '../assets/assets';
 import RelatedProducts from '../components/RelatedProducts';
 import Loader from '../components/Loader';
 import SizeSelectionModal from '../components/SizeSelectionModal';
+import ReviewSection from '../components/ReviewSection';
 
 const Product = () => {
 
   const { productId } = useParams();
-  const { products, currency, addToCart } = useContext(ShopContext);
+  const { products, currency, addToCart, backendUrl } = useContext(ShopContext);
   const [productData, setProductData] = useState(false);
   const [image, setImage] = useState('')
   const [size, setSize] = useState('')
   const [color, setColor] = useState('')
   const [showSizeModal, setShowSizeModal] = useState(false)
+  const [activeTab, setActiveTab] = useState('description')
+
+  // Live rating — overrides stale context cache once ReviewSection fetches real data
+  const [liveAvgRating, setLiveAvgRating] = useState(null);
+  const [liveReviewCount, setLiveReviewCount] = useState(null);
 
   // NEW: Variant-based pricing
   const [selectedVariant, setSelectedVariant] = useState(null);
@@ -64,6 +71,33 @@ const Product = () => {
   useEffect(() => {
     fetchProductData();
   }, [productId, products])
+
+  // Fetch live review summary as soon as productId is known.
+  // Does NOT wait for the Reviews tab to be opened.
+  useEffect(() => {
+    if (!productId || !backendUrl) return;
+    // Reset so stale data from a previous product doesn't show briefly
+    setLiveAvgRating(null);
+    setLiveReviewCount(null);
+    axios
+      .get(`${backendUrl}/api/review/${productId}?page=1&limit=1`)
+      .then(res => {
+        if (!res.data.success) return;
+        const breakdown = res.data.ratingBreakdown || {};
+        const totalReviews = Object.values(breakdown).reduce((s, c) => s + c, 0);
+        if (totalReviews === 0) {
+          setLiveAvgRating(0);
+          setLiveReviewCount(0);
+          return;
+        }
+        const weightedSum = Object.entries(breakdown).reduce(
+          (s, [star, count]) => s + Number(star) * count, 0
+        );
+        setLiveAvgRating(Math.round((weightedSum / totalReviews) * 10) / 10);
+        setLiveReviewCount(totalReviews);
+      })
+      .catch(() => {}); // silent fail — stale context values are the fallback
+  }, [productId, backendUrl]);
 
   // Update images when color changes
   useEffect(() => {
@@ -208,12 +242,31 @@ const Product = () => {
             </h1>
             {productData.brand && <p className='text-gray-600 mt-1 text-sm'>Brand: <span className='font-medium'>{productData.brand}</span></p>}
             <div className=' flex items-center gap-1 mt-2'>
-              <img src={assets.star_icon} alt="" className="w-3.5" />
-              <img src={assets.star_icon} alt="" className="w-3.5" />
-              <img src={assets.star_icon} alt="" className="w-3.5" />
-              <img src={assets.star_icon} alt="" className="w-3.5" />
-              <img src={assets.star_dull_icon} alt="" className="w-3.5" />
-              <p className='pl-2 text-xs text-gray-500'>(Demo rating)</p>
+              {(() => {
+                // Prefer live values from ReviewSection API call over stale context cache
+                const displayAvg = liveAvgRating !== null ? liveAvgRating : (productData.avgRating || 0);
+                const displayCount = liveReviewCount !== null ? liveReviewCount : (productData.reviewCount || 0);
+                return displayAvg > 0 ? (
+                  <>
+                    {[1,2,3,4,5].map(star => (
+                      <img
+                        key={star}
+                        src={star <= Math.round(displayAvg) ? assets.star_icon : assets.star_dull_icon}
+                        alt=""
+                        className="w-3.5"
+                      />
+                    ))}
+                    <p className='pl-2 text-xs text-gray-500'>({displayCount} {displayCount === 1 ? 'review' : 'reviews'})</p>
+                  </>
+                ) : (
+                  <>
+                    {[1,2,3,4,5].map(star => (
+                      <img key={star} src={assets.star_dull_icon} alt="" className="w-3.5" />
+                    ))}
+                    <p className='pl-2 text-xs text-gray-500'>No reviews yet</p>
+                  </>
+                );
+              })()}
             </div>
             <div className='mt-5 flex items-center gap-3'>
               <p className='text-3xl font-medium'>
@@ -435,15 +488,46 @@ const Product = () => {
         />
 
         <div className='mt-20'>
+          {/* Tabs */}
           <div className='flex'>
-            <b className='border px-5 py-3 text-sm'>Description</b>
-            <p className='border px-5 py-3 text-sm text-gray-400'>Reviews (Coming Soon)</p>
+            <button
+              onClick={() => setActiveTab('description')}
+              className={`border px-5 py-3 text-sm transition-colors ${
+                activeTab === 'description'
+                  ? 'bg-white font-semibold border-b-white'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              Description
+            </button>
+            <button
+              onClick={() => setActiveTab('reviews')}
+              className={`border px-5 py-3 text-sm transition-colors ${
+                activeTab === 'reviews'
+                  ? 'bg-white font-semibold border-b-white'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              Reviews {productData.reviewCount > 0 ? `(${productData.reviewCount})` : ''}
+            </button>
           </div>
-          <div className='flex flex-col gap-4 border px-6 py-6 text-sm text-gray-500'>
-            {productData.description ? (
-              <p>{productData.description}</p>
+          <div className='border border-t-0 px-6 py-6 text-sm text-gray-500'>
+            {activeTab === 'description' ? (
+              productData.description ? (
+                <p>{productData.description}</p>
+              ) : (
+                <p className='text-gray-400 italic'>No description available for this product.</p>
+              )
             ) : (
-              <p className='text-gray-400 italic'>No description available for this product.</p>
+              <ReviewSection
+                productId={productData._id}
+                avgRating={productData.avgRating}
+                reviewCount={productData.reviewCount}
+                onRatingLoaded={(avg, count) => {
+                  setLiveAvgRating(avg);
+                  setLiveReviewCount(count);
+                }}
+              />
             )}
           </div>
         </div>
