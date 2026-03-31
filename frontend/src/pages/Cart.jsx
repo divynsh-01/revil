@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import { ShopContext } from '../context/ShopContext'
 import Title from '../components/Title';
 import { assets } from '../assets/assets';
@@ -12,14 +12,33 @@ const Cart = () => {
   const [cartData, setCartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
+  const hasLoaded = useRef(false);
 
   useEffect(() => {
     const buildCart = async () => {
-      setLoading(true);
+      const isFirstLoad = !hasLoaded.current;
+      if (isFirstLoad) setLoading(true);
+
       if (token) {
-        // Logged-in: fetch rich cart data (images, prices) from backend
-        const backendCart = await getBackendCartItems();
-        setCartData(backendCart);
+        if (isFirstLoad) {
+          // Initial load only: fetch full cart data from backend (images, prices, stock).
+          const backendCart = await getBackendCartItems();
+          setCartData(backendCart);
+        } else {
+          // Subsequent updates (e.g. triggered by updateQuantity / getUserCart):
+          // Update quantities locally from the already-synced cartItems context.
+          // This avoids a backend round-trip whose stale response causes the 1-2-1-2 flicker.
+          setCartData(prev =>
+            prev
+              .map(item => {
+                const key = item.variantId || (item.color ? `${item.size}-${item.color}` : item.size);
+                const qty = cartItems[item.productId]?.[key];
+                if (qty === undefined || qty <= 0) return null; // item was removed
+                return { ...item, quantity: qty };
+              })
+              .filter(Boolean)
+          );
+        }
       } else {
         // Guest: build display rows from local cartItems + products
         const rows = [];
@@ -63,7 +82,11 @@ const Cart = () => {
         }
         setCartData(rows);
       }
-      setLoading(false);
+
+      if (isFirstLoad) {
+        hasLoaded.current = true;
+        setLoading(false);
+      }
     };
     // Only wait for products to load before showing guest cart
     if (!token && products.length === 0) return;
