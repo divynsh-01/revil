@@ -1,5 +1,5 @@
 import React, { useContext } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import Collection from './pages/Collection'
 import About from './pages/About'
@@ -27,6 +27,9 @@ const ProtectedRoute = ({ element }) => {
 };
 
 const App = () => {
+  const location = useLocation()
+  const hideFooter = location.pathname === '/contact'
+
   return (
     <div className='w-full'>
       <Navbar />
@@ -49,12 +52,15 @@ const App = () => {
           <Route path='/profile' element={<ProtectedRoute element={<Profile />} />} />
           <Route path='/verify' element={<Verify />} />
         </Routes>
-        <div className='px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
-          <Footer />
-        </div>
+        {!hideFooter && (
+          <div className='px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
+            <Footer />
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
 export default App
+

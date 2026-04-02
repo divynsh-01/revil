@@ -3,7 +3,7 @@ import Hero from '../components/Hero'
 import LatestCollection from '../components/LatestCollection'
 import BestSeller from '../components/BestSeller'
 import OurPolicy from '../components/OurPolicy'
-import NewsletterBox from '../components/NewsletterBox'
+
 
 const Home = () => {
   return (
@@ -11,11 +11,11 @@ const Home = () => {
       <div className='pt-2'>
         <Hero />
       </div>
-      <div className='pt-0 px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
+      <div className='pt-0 px-4 sm:px-[5vw] md:px-[7vw] lg:px-3'>
         <LatestCollection />
         <BestSeller />
         <OurPolicy />
-        <NewsletterBox />
+
       </div>
     </div>
   )
