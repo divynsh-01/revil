@@ -245,77 +245,79 @@ const Profile = () => {
                 </div>
 
                 {/* Password Section */}
-                <div className='bg-white border border-neutral-200 rounded-sm p-6 sm:p-8'>
-                    <div className='flex items-center justify-between mb-6'>
-                        <h3 className='text-lg font-semibold text-black'>Password</h3>
-                        {!isChangingPassword && (
-                            <button
-                                onClick={() => setIsChangingPassword(true)}
-                                className='text-sm text-black hover:underline'
-                            >
-                                Change Password
-                            </button>
+                {(userData.role === 'admin' || userData.role === 'owner') && (
+                    <div className='bg-white border border-neutral-200 rounded-sm p-6 sm:p-8'>
+                        <div className='flex items-center justify-between mb-6'>
+                            <h3 className='text-lg font-semibold text-black'>Password</h3>
+                            {!isChangingPassword && (
+                                <button
+                                    onClick={() => setIsChangingPassword(true)}
+                                    className='text-sm text-black hover:underline'
+                                >
+                                    Change Password
+                                </button>
+                            )}
+                        </div>
+
+                        {!isChangingPassword ? (
+                            <p className='text-sm text-neutral-600'>••••••••</p>
+                        ) : (
+                            <form onSubmit={handleChangePassword} className='space-y-4'>
+                                <div>
+                                    <label className='text-sm text-neutral-700 block mb-2'>Current Password</label>
+                                    <input
+                                        type='password'
+                                        value={passwordData.oldPassword}
+                                        onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
+                                        className='input w-full'
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className='text-sm text-neutral-700 block mb-2'>New Password</label>
+                                    <input
+                                        type='password'
+                                        value={passwordData.newPassword}
+                                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                                        className='input w-full'
+                                        required
+                                        minLength={8}
+                                    />
+                                    <p className='text-xs text-neutral-500 mt-1'>Must be at least 8 characters</p>
+                                </div>
+                                <div>
+                                    <label className='text-sm text-neutral-700 block mb-2'>Confirm New Password</label>
+                                    <input
+                                        type='password'
+                                        value={passwordData.confirmPassword}
+                                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                        className='input w-full'
+                                        required
+                                    />
+                                </div>
+                                <div className='flex gap-3 pt-2'>
+                                    <button
+                                        type='submit'
+                                        disabled={loading}
+                                        className='btn btn-primary px-8'
+                                    >
+                                        {loading ? 'Changing...' : 'Change Password'}
+                                    </button>
+                                    <button
+                                        type='button'
+                                        onClick={() => {
+                                            setIsChangingPassword(false);
+                                            setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+                                        }}
+                                        className='btn btn-outline px-8'
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
                         )}
                     </div>
-
-                    {!isChangingPassword ? (
-                        <p className='text-sm text-neutral-600'>••••••••</p>
-                    ) : (
-                        <form onSubmit={handleChangePassword} className='space-y-4'>
-                            <div>
-                                <label className='text-sm text-neutral-700 block mb-2'>Current Password</label>
-                                <input
-                                    type='password'
-                                    value={passwordData.oldPassword}
-                                    onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
-                                    className='input w-full'
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className='text-sm text-neutral-700 block mb-2'>New Password</label>
-                                <input
-                                    type='password'
-                                    value={passwordData.newPassword}
-                                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                                    className='input w-full'
-                                    required
-                                    minLength={8}
-                                />
-                                <p className='text-xs text-neutral-500 mt-1'>Must be at least 8 characters</p>
-                            </div>
-                            <div>
-                                <label className='text-sm text-neutral-700 block mb-2'>Confirm New Password</label>
-                                <input
-                                    type='password'
-                                    value={passwordData.confirmPassword}
-                                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                                    className='input w-full'
-                                    required
-                                />
-                            </div>
-                            <div className='flex gap-3 pt-2'>
-                                <button
-                                    type='submit'
-                                    disabled={loading}
-                                    className='btn btn-primary px-8'
-                                >
-                                    {loading ? 'Changing...' : 'Change Password'}
-                                </button>
-                                <button
-                                    type='button'
-                                    onClick={() => {
-                                        setIsChangingPassword(false);
-                                        setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
-                                    }}
-                                    className='btn btn-outline px-8'
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </form>
-                    )}
-                </div>
+                )}
 
             </div>
         </div>

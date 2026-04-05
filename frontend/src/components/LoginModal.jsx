@@ -7,15 +7,25 @@ const LoginModal = () => {
     const { backendUrl, token, setToken, showLoginModal, setShowLoginModal, pendingWishlistId, setPendingWishlistId, addToWishlist } = useContext(ShopContext);
     const { show } = useNotification();
 
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [currentState, setCurrentState] = useState('Enter Phone');
+    const [phone, setPhone] = useState('');
+    const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
+    
+    // Complete Profile states
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [tempToken, setTempToken] = useState('');
 
     // Reset fields whenever modal opens
     useEffect(() => {
         if (showLoginModal) {
+            setCurrentState('Enter Phone');
+            setPhone('');
+            setOtp('');
+            setName('');
             setEmail('');
-            setPassword('');
+            setTempToken('');
         }
     }, [showLoginModal]);
 
@@ -27,18 +37,18 @@ const LoginModal = () => {
         }
     }, [token]);
 
-    if (!showLoginModal) return null;
-
-    const handleSubmit = async (e) => {
+    const requestOtp = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
-            const response = await axios.post(backendUrl + '/api/user/login', { email, password });
+            const response = await axios.post(backendUrl + '/api/user/send-otp', { phone });
             if (response.data.success) {
-                setToken(response.data.token);
-                localStorage.setItem('token', response.data.token);
-                setShowLoginModal(false);
-                show('Logged in successfully', 'success');
+                if (response.data.testOtp) {
+                    show(`Test OTP: ${response.data.testOtp}`, 'success');
+                } else {
+                    show('OTP sent successfully!', 'success');
+                }
+                setCurrentState('Enter OTP');
             } else {
                 show(response.data.message, 'error');
             }
@@ -48,12 +58,68 @@ const LoginModal = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }
+
+    const verifyOtp = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const response = await axios.post(backendUrl + '/api/user/verify-otp', { phone, otp });
+            if (response.data.success) {
+                const userData = response.data.user;
+                if (!userData.name || userData.name === 'User' || !userData.email) {
+                    setTempToken(response.data.token);
+                    if (userData.name !== 'User') setName(userData.name);
+                    if (userData.email) setEmail(userData.email);
+                    setCurrentState('Complete Profile');
+                } else {
+                    setToken(response.data.token);
+                    localStorage.setItem('token', response.data.token);
+                    setShowLoginModal(false);
+                    show('Logged in successfully', 'success');
+                }
+            } else {
+                show(response.data.message, 'error');
+            }
+        } catch (error) {
+            console.log(error);
+            show(error.message, 'error');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const handleProfileCompletion = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const response = await axios.post(
+                backendUrl + '/api/user/update-profile',
+                { name, email },
+                { headers: { token: tempToken } }
+            );
+            if (response.data.success) {
+                setToken(tempToken);
+                localStorage.setItem('token', tempToken);
+                setShowLoginModal(false);
+                show('Logged in successfully!', 'success');
+            } else {
+                show(response.data.message, 'error');
+            }
+        } catch (error) {
+            console.log(error);
+            show(error.message, 'error');
+        } finally {
+            setLoading(false);
+        }
+    }
 
     const handleClose = () => {
         setShowLoginModal(false);
         setPendingWishlistId(null);
     };
+
+    if (!showLoginModal) return null;
 
     return (
         <div
@@ -78,44 +144,88 @@ const LoginModal = () => {
                     <svg className='w-8 h-8 mx-auto mb-3 text-red-400' fill='currentColor' viewBox='0 0 24 24'>
                         <path d='M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z' />
                     </svg>
-                    <h2 className='text-xl font-semibold text-black'>Login to add to Wishlist</h2>
-                    <p className='text-sm text-neutral-500 mt-1'>Sign in to save this item</p>
+                    <h2 className='text-xl font-semibold text-black'>
+                        {currentState === 'Complete Profile' ? 'Complete Profile' : 'Login to add to Wishlist'}
+                    </h2>
+                    <p className='text-sm text-neutral-500 mt-1'>
+                        {currentState === 'Complete Profile' ? 'Just one more step!' : 'Sign in to save this item'}
+                    </p>
                 </div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className='flex flex-col gap-4'>
-                    <input
-                        type='email'
-                        placeholder='Email'
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        className='w-full px-3 py-2.5 border border-neutral-300 text-sm focus:outline-none focus:border-black transition-colors'
-                        required
-                        autoFocus
-                    />
-                    <input
-                        type='password'
-                        placeholder='Password'
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        className='w-full px-3 py-2.5 border border-neutral-300 text-sm focus:outline-none focus:border-black transition-colors'
-                        required
-                    />
-                    <button
-                        type='submit'
-                        disabled={loading}
-                        className='w-full bg-black text-white py-2.5 text-sm font-medium hover:bg-neutral-800 transition-colors disabled:bg-neutral-400'
-                    >
-                        {loading ? 'Signing in...' : 'Sign In'}
-                    </button>
-                </form>
-
-                <p className='text-xs text-center text-neutral-400 mt-4'>
-                    Don't have an account?{' '}
-                    <a href='/login' className='text-black underline' onClick={handleClose}>
-                        Create one
-                    </a>
-                </p>
+                {currentState === 'Enter Phone' ? (
+                    <form onSubmit={requestOtp} className='flex flex-col gap-4'>
+                        <p className='text-xs text-center text-neutral-500'>Enter your mobile number to receive an OTP.</p>
+                        <input
+                            type='tel'
+                            placeholder='Mobile Number'
+                            value={phone}
+                            onChange={e => setPhone(e.target.value)}
+                            className='w-full px-3 py-2.5 border border-neutral-300 text-sm focus:outline-none focus:border-black transition-colors'
+                            required
+                            autoFocus
+                        />
+                        <button
+                            type='submit'
+                            disabled={loading}
+                            className='w-full bg-black text-white py-2.5 text-sm font-medium hover:bg-neutral-800 transition-colors disabled:bg-neutral-400'
+                        >
+                            {loading ? 'Sending...' : 'Send OTP'}
+                        </button>
+                    </form>
+                ) : currentState === 'Enter OTP' ? (
+                    <form onSubmit={verifyOtp} className='flex flex-col gap-4'>
+                        <p className='text-xs text-center text-neutral-500'>Enter the 6-digit OTP sent to {phone}.</p>
+                        <input
+                            type='text'
+                            placeholder='_ _ _ _ _ _'
+                            value={otp}
+                            maxLength={6}
+                            onChange={e => setOtp(e.target.value)}
+                            className='w-full px-3 py-2.5 border border-neutral-300 text-sm focus:outline-none focus:border-black transition-colors tracking-widest text-center text-xl'
+                            required
+                            autoFocus
+                        />
+                        <div className='w-full flex justify-between text-xs text-neutral-500 mt-1'>
+                            <button type='button' onClick={() => setCurrentState('Enter Phone')} className='hover:text-black underline'>Edit Phone Number</button>
+                            <button type='button' onClick={requestOtp} className='hover:text-black underline' disabled={loading}>Resend OTP</button>
+                        </div>
+                        <button
+                            type='submit'
+                            disabled={loading}
+                            className='w-full bg-black text-white py-2.5 text-sm font-medium hover:bg-neutral-800 transition-colors disabled:bg-neutral-400'
+                        >
+                            {loading ? 'Verifying...' : 'Verify & Sign In'}
+                        </button>
+                    </form>
+                ) : (
+                    <form onSubmit={handleProfileCompletion} className='flex flex-col gap-4'>
+                        <input
+                            type='text'
+                            placeholder='Full Name'
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            className='w-full px-3 py-2.5 border border-neutral-300 text-sm focus:outline-none focus:border-black transition-colors'
+                            required
+                            autoFocus
+                        />
+                        <input
+                            type='email'
+                            placeholder='Email Address'
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                            className='w-full px-3 py-2.5 border border-neutral-300 text-sm focus:outline-none focus:border-black transition-colors'
+                            required
+                        />
+                        <button
+                            type='submit'
+                            disabled={loading}
+                            className='w-full bg-black text-white py-2.5 text-sm font-medium hover:bg-neutral-800 transition-colors disabled:bg-neutral-400'
+                        >
+                            {loading ? 'Saving...' : 'Complete & Sign In'}
+                        </button>
+                    </form>
+                )}
             </div>
         </div>
     );
